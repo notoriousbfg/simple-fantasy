@@ -8,26 +8,26 @@ e.g.
 ```
 The best team you could play in Gameweek 2 is:
 
-Forwards:
-Haaland
-Wissa
-Nketiah
+Goalkeepers:
+[6.0] Ederson M.
+[3.0] Alisson
 
 Defenders:
-Estupiñan
-Aké
-Walker
-Akanji
-R.Lewis
-
-Goalkeepers:
-Ederson M.
-Alisson
+[7.0] Estupiñan
+[7.0] Aké
+[6.0] Walker
+[6.0] Akanji
+[6.0] R.Lewis
 
 Midfielders:
-Rodrigo
-Saka
-March
-Luis Díaz
-Mbeumo
+[13.0] Rodrigo
+[10.0] Saka
+[9.0] March
+[8.0] Luis Díaz
+[7.0] Mbeumo
+
+Forwards:
+[13.0] Haaland
+[9.0] Wissa
+[8.0] Nketiah
 ```
