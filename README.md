@@ -6,7 +6,7 @@ A very crude tool that lists the "perfect team" for a Premier League fantasy gam
 
 e.g.
 ```
-The best players you could play in Gameweek 2 are:
+The best team you could play in Gameweek 2 is:
 
 Forwards:
 Haaland
@@ -29,5 +29,5 @@ Rodrigo
 Saka
 March
 Luis Díaz
-Diaby
+Mbeumo
 ```
