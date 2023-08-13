@@ -16,8 +16,9 @@ const (
 )
 
 type team struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID                 int    `json:"id"`
+	Name               string `json:"name"`
+	DifficultyMajority int
 }
 
 type event struct {
@@ -125,6 +126,7 @@ func main() {
 		var likelyWinner team
 		if fixture.HomeTeamDifficulty < fixture.AwayTeamDifficulty {
 			likelyWinner = homeTeam
+			// likelyWinner.DifficultyMajority = fixture.AwayTeamDifficulty - fixture.HomeTeamDifficulty
 		} else if fixture.HomeTeamDifficulty > fixture.AwayTeamDifficulty {
 			likelyWinner = awayTeam
 		}
@@ -144,7 +146,17 @@ func main() {
 	for playerTypeID, players := range likeWinnerPlayersByType {
 		// expensive, probably
 		sort.Slice(players, func(i, j int) bool {
-			return players[i].Form > players[j].Form
+			playerIForm, err := strconv.ParseFloat(players[i].Form, 32)
+			if err != nil {
+				panic(err)
+			}
+
+			playerJForm, err := strconv.ParseFloat(players[j].Form, 32)
+			if err != nil {
+				panic(err)
+			}
+
+			return playerIForm > playerJForm
 		})
 
 		playerType := playerTypeMap[playerTypeID]

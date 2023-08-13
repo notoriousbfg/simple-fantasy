@@ -8,6 +8,11 @@ e.g.
 ```
 The best players you could play in Gameweek 2 are:
 
+Forwards:
+Haaland
+Wissa
+Nketiah
+
 Defenders:
 Estupiñan
 Aké
@@ -20,14 +25,9 @@ Ederson M.
 Alisson
 
 Midfielders:
+Rodrigo
+Saka
 March
 Luis Díaz
 Diaby
-Mbeumo
-Adingra
-
-Forwards:
-Wissa
-Nketiah
-João Pedro
 ```
