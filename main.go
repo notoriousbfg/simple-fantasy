@@ -112,7 +112,7 @@ func main() {
 
 	fmt.Println()
 
-	fmt.Printf("The best players you could play in %s are: \n", gameweek.Name)
+	fmt.Printf("The best team you could play in %s is: \n", gameweek.Name)
 
 	fmt.Println()
 
@@ -126,14 +126,20 @@ func main() {
 		var likelyWinner team
 		if fixture.HomeTeamDifficulty < fixture.AwayTeamDifficulty {
 			likelyWinner = homeTeam
-			// likelyWinner.DifficultyMajority = fixture.AwayTeamDifficulty - fixture.HomeTeamDifficulty
+			likelyWinner.DifficultyMajority = fixture.AwayTeamDifficulty - fixture.HomeTeamDifficulty
 		} else if fixture.HomeTeamDifficulty > fixture.AwayTeamDifficulty {
 			likelyWinner = awayTeam
+			likelyWinner.DifficultyMajority = fixture.HomeTeamDifficulty - fixture.AwayTeamDifficulty
 		}
 
 		if likelyWinner != (team{}) {
 			likelyWinners = append(likelyWinners, likelyWinner)
 		}
+	}
+
+	likelyWinnerMap := make(map[int]team, 0)
+	for _, winner := range likelyWinners {
+		likelyWinnerMap[winner.ID] = winner
 	}
 
 	likeWinnerPlayersByType := make(map[int][]player, 0)
@@ -156,7 +162,14 @@ func main() {
 				panic(err)
 			}
 
-			return playerIForm > playerJForm
+			if playerIForm != playerJForm {
+				return playerIForm > playerJForm
+			}
+
+			playerITeamDifficultyMajority := likelyWinnerMap[players[i].TeamID].DifficultyMajority
+			playerJTeamDifficultyMajority := likelyWinnerMap[players[j].TeamID].DifficultyMajority
+
+			return playerITeamDifficultyMajority > playerJTeamDifficultyMajority
 		})
 
 		playerType := playerTypeMap[playerTypeID]
