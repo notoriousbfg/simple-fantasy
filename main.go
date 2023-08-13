@@ -56,13 +56,6 @@ type fixture struct {
 
 type fixtures []fixture
 
-type bestPlayers struct {
-	Goalkeepers []player
-	Defenders   []player
-	Midfielders []player
-	Forwards    []player
-}
-
 func main() {
 	args := os.Args[1:]
 
@@ -92,11 +85,6 @@ func main() {
 	teamsMap := make(map[int]team, 0)
 	for _, team := range statsResp.Teams {
 		teamsMap[team.ID] = team
-	}
-
-	gameWeekMap := make(map[int]string, 0)
-	for _, event := range statsResp.Events {
-		gameWeekMap[event.ID] = event.Name
 	}
 
 	playerTypeMap := make(map[int]playerType, 0)
