@@ -57,6 +57,13 @@ type fixture struct {
 
 type fixtures []fixture
 
+type bestTeam struct {
+	Goalkeepers []string
+	Defenders   []string
+	Midfielders []string
+	Forwards    []string
+}
+
 func main() {
 	args := os.Args[1:]
 
@@ -149,6 +156,7 @@ func main() {
 		}
 	}
 
+	var bestTeam bestTeam
 	for playerTypeID, players := range likeWinnerPlayersByType {
 		// expensive, probably
 		sort.Slice(players, func(i, j int) bool {
@@ -174,15 +182,67 @@ func main() {
 
 		playerType := playerTypeMap[playerTypeID]
 
-		fmt.Printf("%s: \n", playerType.Name)
-
-		for i := 0; i < playerType.PlayerCount; i++ {
-			fmt.Println(players[i].Name)
+		// i'm sure there's a better way of doing this
+		if playerType.Name == "Goalkeepers" {
+			for i := 0; i < playerType.PlayerCount; i++ {
+				bestTeam.Goalkeepers = append(
+					bestTeam.Goalkeepers,
+					fmt.Sprintf("[%s] %s", players[i].Form, players[i].Name),
+				)
+			}
 		}
 
-		fmt.Println()
+		if playerType.Name == "Defenders" {
+			for i := 0; i < playerType.PlayerCount; i++ {
+				bestTeam.Defenders = append(
+					bestTeam.Defenders,
+					fmt.Sprintf("[%s] %s", players[i].Form, players[i].Name),
+				)
+			}
+		}
+
+		if playerType.Name == "Midfielders" {
+			for i := 0; i < playerType.PlayerCount; i++ {
+				bestTeam.Midfielders = append(
+					bestTeam.Midfielders,
+					fmt.Sprintf("[%s] %s", players[i].Form, players[i].Name),
+				)
+			}
+		}
+
+		if playerType.Name == "Forwards" {
+			for i := 0; i < playerType.PlayerCount; i++ {
+				bestTeam.Forwards = append(
+					bestTeam.Forwards,
+					fmt.Sprintf("[%s] %s", players[i].Form, players[i].Name),
+				)
+			}
+		}
 	}
 
+	fmt.Println("Goalkeepers:")
+	for _, goalkeeper := range bestTeam.Goalkeepers {
+		fmt.Println(goalkeeper)
+	}
+	fmt.Println()
+
+	fmt.Println("Defenders:")
+	for _, defender := range bestTeam.Defenders {
+		fmt.Println(defender)
+	}
+	fmt.Println()
+
+	fmt.Println("Midfielders:")
+	for _, midfielder := range bestTeam.Midfielders {
+		fmt.Println(midfielder)
+	}
+	fmt.Println()
+
+	fmt.Println("Forwards:")
+	for _, forward := range bestTeam.Forwards {
+		fmt.Println(forward)
+	}
+	fmt.Println()
 }
 
 func getJsonBody(endpoint string) ([]byte, error) {
