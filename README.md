@@ -1,10 +1,10 @@
 ## Simple Fantasy
 
 A very crude tool that lists the "perfect team" for a Premier League fantasy gameweek. It factors in these traits, in the following order:
-1) A player's form.
-2) A player's ICT index.
-3) A player's average starts.
-4) The estimated "difficulty" of the fixture.
+1) The estimated "difficulty" of the fixture.
+2) A player's form.
+3) A player's ICT index.
+4) A player's average starts.
 
 e.g.
 ```
