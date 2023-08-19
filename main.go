@@ -8,8 +8,9 @@ import (
 )
 
 type likelyFixtureWinner struct {
-	Player  Player
-	Fixture Fixture
+	Player       Player
+	Fixture      Fixture
+	OpposingTeam Team
 }
 
 type bestTeam struct {
@@ -23,7 +24,7 @@ func main() {
 	args := os.Args[1:]
 
 	if len(args) == 0 {
-		panic("You must provide the gameweek number")
+		panic("You must provide a gameweek number")
 	}
 
 	chosenGameweek := args[0]
@@ -40,15 +41,19 @@ func main() {
 	likelyWinners := make([]likelyFixtureWinner, 0)
 	for _, fixture := range data.FixturesByGameWeek(gameWeekInt) {
 		var likelyWinner Team
+		var opposingTeam Team
 		if fixture.HomeTeamDifficulty < fixture.AwayTeamDifficulty {
 			likelyWinner = *fixture.HomeTeam
+			opposingTeam = *fixture.AwayTeam
 		} else if fixture.HomeTeamDifficulty > fixture.AwayTeamDifficulty {
-			likelyWinner = *fixture.HomeTeam
+			likelyWinner = *fixture.AwayTeam
+			opposingTeam = *fixture.HomeTeam
 		}
 		for _, player := range likelyWinner.Players {
 			likelyWinners = append(likelyWinners, likelyFixtureWinner{
-				Player:  player,
-				Fixture: fixture,
+				Player:       player,
+				Fixture:      fixture,
+				OpposingTeam: opposingTeam,
 			})
 		}
 	}
@@ -71,7 +76,7 @@ func main() {
 	for i := 0; i < gkType.TeamPlayerCount; i++ {
 		bestTeam.Goalkeepers = append(
 			bestTeam.Goalkeepers,
-			fmt.Sprintf("[%v] %s", goalkeepers[i].Player.Form, goalkeepers[i].Player.Name),
+			fmt.Sprintf("[%v] %s (%s)", goalkeepers[i].Player.Form, goalkeepers[i].Player.Name, goalkeepers[i].OpposingTeam.ShortName),
 		)
 	}
 
@@ -80,7 +85,7 @@ func main() {
 	for i := 0; i < defType.TeamPlayerCount; i++ {
 		bestTeam.Defenders = append(
 			bestTeam.Defenders,
-			fmt.Sprintf("[%v] %s", defenders[i].Player.Form, defenders[i].Player.Name),
+			fmt.Sprintf("[%v] %s (%s)", defenders[i].Player.Form, defenders[i].Player.Name, defenders[i].OpposingTeam.ShortName),
 		)
 	}
 
@@ -89,7 +94,7 @@ func main() {
 	for i := 0; i < midType.TeamPlayerCount; i++ {
 		bestTeam.Midfielders = append(
 			bestTeam.Midfielders,
-			fmt.Sprintf("[%v] %s", midfielders[i].Player.Form, midfielders[i].Player.Name),
+			fmt.Sprintf("[%v] %s (%s)", midfielders[i].Player.Form, midfielders[i].Player.Name, midfielders[i].OpposingTeam.ShortName),
 		)
 	}
 
@@ -98,7 +103,7 @@ func main() {
 	for i := 0; i < fwdType.TeamPlayerCount; i++ {
 		bestTeam.Forwards = append(
 			bestTeam.Forwards,
-			fmt.Sprintf("[%v] %s", forwards[i].Player.Form, forwards[i].Player.Name),
+			fmt.Sprintf("[%v] %s (%s)", forwards[i].Player.Form, forwards[i].Player.Name, forwards[i].OpposingTeam.ShortName),
 		)
 	}
 
