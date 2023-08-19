@@ -8,7 +8,8 @@ A very crude tool that lists the "perfect team" for a Premier League fantasy gam
 
 e.g.
 ```
-The best team you could play in Gameweek 3 is:
+The best team you could play in Gameweek 3 (deadline 25 Aug 17:30) is:
+-- [Form] Name (Opponent) (Most Captained) --
 
 Goalkeepers:
 [6] Ederson M. (SHU)
@@ -30,6 +31,6 @@ Midfielders:
 
 Forwards:
 [9] Wissa (CRY)
-[7.5] Haaland (SHU)
+[7.5] Haaland (SHU) (C)
 [5] J.Alvarez (SHU)
 ```
