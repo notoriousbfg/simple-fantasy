@@ -3,8 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 )
+
+type likelyFixtureWinner struct {
+	Player  Player
+	Fixture Fixture
+}
 
 type bestTeam struct {
 	Goalkeepers []string
@@ -21,124 +27,74 @@ func main() {
 	}
 
 	chosenGameweek := args[0]
+	gameWeekInt, err := strconv.Atoi(chosenGameweek)
+	if err != nil {
+		panic(err)
+	}
 
 	data, err := BuildData()
 	if err != nil {
 		panic(err)
 	}
 
-	for _, team := range data.Teams {
-		fmt.Println(team)
-	}
-
-	// teamsMap := make(map[int]apiTeam, 0)
-	// for _, team := range statsResp.Teams {
-	// 	teamsMap[team.ID] = team
-	// }
-
-	// playerTypeMap := make(map[int]apiPlayerType, 0)
-	// for _, playerType := range statsResp.PlayerTypes {
-	// 	playerTypeMap[playerType.ID] = playerType
-	// }
-
-	// teamPlayerMap := make(map[int][]apiPlayer, 0)
-	// for _, player := range statsResp.Players {
-	// 	teamPlayerMap[player.TeamID] = append(teamPlayerMap[player.TeamID], player)
-	// }
-
-	// gameWeekFixtureMap := make(map[int][]apiFixture, 0)
-	// for _, fixture := range fixturesList {
-	// 	gameWeekFixtureMap[fixture.EventID] = append(gameWeekFixtureMap[fixture.EventID], fixture)
-	// }
-
-	gameWeekInt, err := strconv.Atoi(chosenGameweek)
-	if err != nil {
-		panic(err)
-	}
-
-	// gameweek := statsResp.Events[gameWeekInt-1]
-
-	// fixtures := gameWeekFixtureMap[gameweek.ID]
-	// likelyWinners := make([]apiTeam, 0)
-
-	likelyWinners := make([]*Team, 0)
-
+	likelyWinners := make([]likelyFixtureWinner, 0)
 	for _, fixture := range data.FixturesByGameWeek(gameWeekInt) {
+		var likelyWinner Team
 		if fixture.HomeTeamDifficulty < fixture.AwayTeamDifficulty {
-			fixture.LikelyWinner = fixture.HomeTeam
-			// likelyWinner.DifficultyMajority = fixture.AwayTeamDifficulty - fixture.HomeTeamDifficulty
-			// likelyWinner.Opponent = &awayTeam
+			likelyWinner = *fixture.HomeTeam
 		} else if fixture.HomeTeamDifficulty > fixture.AwayTeamDifficulty {
-			fixture.LikelyWinner = fixture.HomeTeam
-			// likelyWinner.DifficultyMajority = fixture.HomeTeamDifficulty - fixture.AwayTeamDifficulty
-			// likelyWinner.Opponent = &homeTeam
+			likelyWinner = *fixture.HomeTeam
+		}
+		for _, player := range likelyWinner.Players {
+			likelyWinners = append(likelyWinners, likelyFixtureWinner{
+				Player:  player,
+				Fixture: fixture,
+			})
 		}
 	}
 
-	// for _, fixture := range fixtures {
-	// 	homeTeam := teamsMap[fixture.HomeTeamID]
-	// 	awayTeam := teamsMap[fixture.AwayTeamID]
+	sort.Slice(likelyWinners, func(a, b int) bool {
+		playerA := likelyWinners[a].Player
+		playerB := likelyWinners[b].Player
 
-	// 	var likelyWinner apiTeam
-	// 	if fixture.HomeTeamDifficulty < fixture.AwayTeamDifficulty {
-	// 		likelyWinner = homeTeam
-	// 		likelyWinner.DifficultyMajority = fixture.AwayTeamDifficulty - fixture.HomeTeamDifficulty
-	// 		likelyWinner.Opponent = &awayTeam
-	// 	} else if fixture.HomeTeamDifficulty > fixture.AwayTeamDifficulty {
-	// 		likelyWinner = awayTeam
-	// 		likelyWinner.DifficultyMajority = fixture.HomeTeamDifficulty - fixture.AwayTeamDifficulty
-	// 		likelyWinner.Opponent = &homeTeam
-	// 	}
+		if playerA.Form != playerB.Form {
+			return playerA.Form > playerB.Form
+		}
 
-	// 	if likelyWinner != (apiTeam{}) {
-	// 		likelyWinners = append(likelyWinners, likelyWinner)
-	// 	}
-	// }
-
-	// likelyWinnerMap := make(map[int]apiTeam, 0)
-	// for _, winner := range likelyWinners {
-	// 	likelyWinnerMap[winner.ID] = winner
-	// }
-
-	// likelyWinnerPlayersByType := make(map[int][]apiPlayer, 0)
-	// for _, team := range likelyWinners {
-	// 	for _, teamPlayer := range teamPlayerMap[team.ID] {
-	// 		team := likelyWinnerMap[teamPlayer.TeamID]
-	// 		teamPlayer.Team = &team
-	// 		likelyWinnerPlayersByType[teamPlayer.TypeID] = append(
-	// 			likelyWinnerPlayersByType[teamPlayer.TypeID],
-	// 			teamPlayer,
-	// 		)
-	// 	}
-	// }
+		return likelyWinners[a].Fixture.DifficultyMajority > likelyWinners[b].Fixture.DifficultyMajority
+	})
 
 	// var bestTeam bestTeam
 
 	// var bestTeam bestTeam
 	// for playerTypeID, players := range likelyWinnerPlayersByType {
 	// 	// expensive, probably
-	// 	sort.Slice(players, func(i, j int) bool {
-	// 		playerIForm, err := strconv.ParseFloat(players[i].Form, 32)
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
+	// sort.Slice(players, func(i, j int) bool {
+	// 	playerIForm, err := strconv.ParseFloat(players[i].Form, 32)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
 
-	// 		playerJForm, err := strconv.ParseFloat(players[j].Form, 32)
-	// 		if err != nil {
-	// 			panic(err)
-	// 		}
+	// 	playerJForm, err := strconv.ParseFloat(players[j].Form, 32)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
 
-	// 		if playerIForm != playerJForm {
-	// 			return playerIForm > playerJForm
-	// 		}
+	// 	if playerIForm != playerJForm {
+	// 		return playerIForm > playerJForm
+	// 	}
 
-	// 		playerITeamDifficultyMajority := likelyWinnerMap[players[i].TeamID].DifficultyMajority
-	// 		playerJTeamDifficultyMajority := likelyWinnerMap[players[j].TeamID].DifficultyMajority
+	// 	playerITeamDifficultyMajority := likelyWinnerMap[players[i].TeamID].DifficultyMajority
+	// 	playerJTeamDifficultyMajority := likelyWinnerMap[players[j].TeamID].DifficultyMajority
 
-	// 		return playerITeamDifficultyMajority > playerJTeamDifficultyMajority
-	// 	})
+	// 	return playerITeamDifficultyMajority > playerJTeamDifficultyMajority
+	// })
 
 	// 	playerType := playerTypeMap[playerTypeID]
+
+	goalkeepers := filterWinnersByType(likelyWinners, "Goalkeeper")
+
+	fmt.Print(goalkeepers)
 
 	// 	// i'm sure there's a better way of doing this
 	// 	if playerType.Name == "Goalkeepers" {
@@ -205,4 +161,14 @@ func main() {
 	// 	fmt.Println(forward)
 	// }
 	// fmt.Println()
+}
+
+func filterWinnersByType(likelyWinners []likelyFixtureWinner, playerType string) []likelyFixtureWinner {
+	out := make([]likelyFixtureWinner, 0)
+	for _, likelyWinner := range likelyWinners {
+		if likelyWinner.Player.Type.Name == playerType {
+			out = append(out, likelyWinner)
+		}
+	}
+	return out
 }

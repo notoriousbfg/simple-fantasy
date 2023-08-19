@@ -34,7 +34,8 @@ type apiElement struct {
 
 type apiElementType struct {
 	ID          int    `json:"id"`
-	Name        string `json:"plural_name"`
+	Name        string `json:"singular_name"`
+	PluralName  string `json:"plural_name"`
 	PlayerCount int    `json:"squad_select"`
 }
 
@@ -60,11 +61,11 @@ type Data struct {
 	Teams    []*Team
 }
 
-func (d *Data) FixturesByGameWeek(gameweek int) []*Fixture {
-	var fixtures []*Fixture
+func (d *Data) FixturesByGameWeek(gameweek int) []Fixture {
+	fixtures := make([]Fixture, 0)
 	for _, fixture := range d.Fixtures {
 		if GameweekID(gameweek) == fixture.Gameweek.ID {
-			fixtures = append(fixtures, fixture)
+			fixtures = append(fixtures, *fixture)
 		}
 	}
 	return fixtures
@@ -75,6 +76,7 @@ type PlayerTypeID int
 type PlayerType struct {
 	ID              PlayerTypeID
 	Name            string
+	PluralName      string
 	TeamPlayerCount int
 }
 
@@ -108,9 +110,9 @@ type Fixture struct {
 	Gameweek           *Gameweek
 	HomeTeam           *Team
 	AwayTeam           *Team
-	LikelyWinner       *Team
 	HomeTeamDifficulty int
 	AwayTeamDifficulty int
+	DifficultyMajority int
 }
 
 func BuildData() (*Data, error) {
@@ -153,6 +155,7 @@ func BuildData() (*Data, error) {
 		playerTypesByID[playerTypeID] = PlayerType{
 			ID:              playerTypeID,
 			Name:            apiPlayerType.Name,
+			PluralName:      apiPlayerType.PluralName,
 			TeamPlayerCount: apiPlayerType.PlayerCount,
 		}
 	}
@@ -207,12 +210,18 @@ func BuildData() (*Data, error) {
 		homeTeam := teamsByID[TeamID(apiFixture.HomeTeamID)]
 		awayTeam := teamsByID[TeamID(apiFixture.AwayTeamID)]
 
+		gameweek, ok := gameweeksByID[GameweekID(apiFixture.EventID)]
+		if !ok {
+			continue
+		}
+
 		newFixture := Fixture{
-			Gameweek:           gameweeksByID[GameweekID(apiFixture.EventID)],
+			Gameweek:           gameweek,
 			HomeTeam:           homeTeam,
 			AwayTeam:           awayTeam,
 			HomeTeamDifficulty: apiFixture.HomeTeamDifficulty,
 			AwayTeamDifficulty: apiFixture.AwayTeamDifficulty,
+			DifficultyMajority: abs(apiFixture.HomeTeamDifficulty - apiFixture.AwayTeamDifficulty),
 		}
 		fixtures = append(fixtures, &newFixture)
 	}
@@ -220,22 +229,6 @@ func BuildData() (*Data, error) {
 
 	return data, nil
 }
-
-// func ImportFixtures() ([]Fixture, error) {
-// 	fixturesBody, err := getJsonBody(fixturesApi)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	var apiFixtures apiFixtures
-// 	if err := json.Unmarshal(fixturesBody, &apiFixtures); err != nil {
-// 		panic(err)
-// 	}
-// 	fixtures := make([]Fixture, 0)
-// 	for _, apiFixture := range apiFixtures {
-// 		fixtures = append(fixtures, Fixture{})
-// 	}
-// 	return fixtures, nil
-// }
 
 func getJsonBody(endpoint string) ([]byte, error) {
 	resp, err := http.Get(endpoint)
@@ -248,4 +241,11 @@ func getJsonBody(endpoint string) ([]byte, error) {
 	}
 	resp.Body.Close()
 	return body, nil
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
