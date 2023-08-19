@@ -18,6 +18,7 @@ const (
 type team struct {
 	ID                 int    `json:"id"`
 	Name               string `json:"name"`
+	Opponent           *team
 	DifficultyMajority int
 }
 
@@ -32,6 +33,7 @@ type player struct {
 	Form   string `json:"form"`
 	TypeID int    `json:"element_type"`
 	TeamID int    `json:"team"`
+	Team   *team
 }
 
 type playerType struct {
@@ -117,12 +119,6 @@ func main() {
 
 	gameweek := statsResp.Events[gameWeekInt-1]
 
-	fmt.Println()
-
-	fmt.Printf("The best team you could play in %s is: \n", gameweek.Name)
-
-	fmt.Println()
-
 	fixtures := gameWeekFixtureMap[gameweek.ID]
 	likelyWinners := make([]team, 0)
 
@@ -134,9 +130,11 @@ func main() {
 		if fixture.HomeTeamDifficulty < fixture.AwayTeamDifficulty {
 			likelyWinner = homeTeam
 			likelyWinner.DifficultyMajority = fixture.AwayTeamDifficulty - fixture.HomeTeamDifficulty
+			likelyWinner.Opponent = &awayTeam
 		} else if fixture.HomeTeamDifficulty > fixture.AwayTeamDifficulty {
 			likelyWinner = awayTeam
 			likelyWinner.DifficultyMajority = fixture.HomeTeamDifficulty - fixture.AwayTeamDifficulty
+			likelyWinner.Opponent = &homeTeam
 		}
 
 		if likelyWinner != (team{}) {
@@ -149,15 +147,20 @@ func main() {
 		likelyWinnerMap[winner.ID] = winner
 	}
 
-	likeWinnerPlayersByType := make(map[int][]player, 0)
+	likelyWinnerPlayersByType := make(map[int][]player, 0)
 	for _, team := range likelyWinners {
 		for _, teamPlayer := range teamPlayerMap[team.ID] {
-			likeWinnerPlayersByType[teamPlayer.TypeID] = append(likeWinnerPlayersByType[teamPlayer.TypeID], teamPlayer)
+			team := likelyWinnerMap[teamPlayer.TeamID]
+			teamPlayer.Team = &team
+			likelyWinnerPlayersByType[teamPlayer.TypeID] = append(
+				likelyWinnerPlayersByType[teamPlayer.TypeID],
+				teamPlayer,
+			)
 		}
 	}
 
 	var bestTeam bestTeam
-	for playerTypeID, players := range likeWinnerPlayersByType {
+	for playerTypeID, players := range likelyWinnerPlayersByType {
 		// expensive, probably
 		sort.Slice(players, func(i, j int) bool {
 			playerIForm, err := strconv.ParseFloat(players[i].Form, 32)
@@ -187,7 +190,7 @@ func main() {
 			for i := 0; i < playerType.PlayerCount; i++ {
 				bestTeam.Goalkeepers = append(
 					bestTeam.Goalkeepers,
-					fmt.Sprintf("[%s] %s", players[i].Form, players[i].Name),
+					fmt.Sprintf("[%s] %s (%s)", players[i].Form, players[i].Name, players[i].Team.Opponent.Name),
 				)
 			}
 		}
@@ -196,7 +199,7 @@ func main() {
 			for i := 0; i < playerType.PlayerCount; i++ {
 				bestTeam.Defenders = append(
 					bestTeam.Defenders,
-					fmt.Sprintf("[%s] %s", players[i].Form, players[i].Name),
+					fmt.Sprintf("[%s] %s (%s)", players[i].Form, players[i].Name, players[i].Team.Opponent.Name),
 				)
 			}
 		}
@@ -205,7 +208,7 @@ func main() {
 			for i := 0; i < playerType.PlayerCount; i++ {
 				bestTeam.Midfielders = append(
 					bestTeam.Midfielders,
-					fmt.Sprintf("[%s] %s", players[i].Form, players[i].Name),
+					fmt.Sprintf("[%s] %s (%s)", players[i].Form, players[i].Name, players[i].Team.Opponent.Name),
 				)
 			}
 		}
@@ -214,11 +217,15 @@ func main() {
 			for i := 0; i < playerType.PlayerCount; i++ {
 				bestTeam.Forwards = append(
 					bestTeam.Forwards,
-					fmt.Sprintf("[%s] %s", players[i].Form, players[i].Name),
+					fmt.Sprintf("[%s] %s (%s)", players[i].Form, players[i].Name, players[i].Team.Opponent.Name),
 				)
 			}
 		}
 	}
+
+	fmt.Println()
+	fmt.Printf("The best team you could play in %s is: \n", gameweek.Name)
+	fmt.Println()
 
 	fmt.Println("Goalkeepers:")
 	for _, goalkeeper := range bestTeam.Goalkeepers {
