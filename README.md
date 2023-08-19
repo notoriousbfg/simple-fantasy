@@ -1,33 +1,35 @@
 ## Simple Fantasy
 
-A very crude tool that lists the "perfect team" for a Premier League fantasy gameweek, based on:
-- The estimated "difficulty" of each fixture.
-- Players' form.
+A very crude tool that lists the "perfect team" for a Premier League fantasy gameweek. It factors in these traits, in the following order:
+1) A player's form.
+2) A player's ICT index.
+3) A player's average starts.
+4) The estimated "difficulty" of the fixture.
 
 e.g.
 ```
-The best team you could play in Gameweek 2 is:
+The best team you could play in Gameweek 3 is:
 
 Goalkeepers:
-[6.0] Ederson M.
-[3.0] Alisson
+[6] Ederson M. (SHU)
+[5.5] Onana (NFO)
 
 Defenders:
-[7.0] Estupiñan
-[7.0] Aké
-[6.0] Walker
-[6.0] Akanji
-[6.0] R.Lewis
+[8.5] Estupiñan (WHU)
+[7.5] R.Varane (NFO)
+[6.5] Romero (BOU)
+[6.5] Wan-Bissaka (NFO)
+[6] Walker (SHU)
 
 Midfielders:
-[13.0] Rodrigo
-[10.0] Saka
-[9.0] March
-[8.0] Luis Díaz
-[7.0] Mbeumo
+[10.5] March (WHU)
+[10] Mbeumo (CRY)
+[8] Rodrigo (SHU)
+[7.5] Mitoma (WHU)
+[6] Maddison (BOU)
 
 Forwards:
-[13.0] Haaland
-[9.0] Wissa
-[8.0] Nketiah
+[9] Wissa (CRY)
+[7.5] Haaland (SHU)
+[5] J.Alvarez (SHU)
 ```
