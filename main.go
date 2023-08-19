@@ -38,6 +38,9 @@ func main() {
 		panic(err)
 	}
 
+	gameweek := data.Gameweek(gameWeekInt)
+	previousGameweek := data.Gameweek(gameWeekInt - 1)
+
 	likelyWinners := make([]likelyFixtureWinner, 0)
 	for _, fixture := range data.FixturesByGameWeek(gameWeekInt) {
 		var likelyWinner Team
@@ -50,6 +53,10 @@ func main() {
 			opposingTeam = *fixture.HomeTeam
 		}
 		for _, player := range likelyWinner.Players {
+			if previousGameweek != nil {
+				player.MostCaptained = (previousGameweek.MostCaptainedID == player.ID)
+			}
+
 			likelyWinners = append(likelyWinners, likelyFixtureWinner{
 				Player:       player,
 				Fixture:      fixture,
@@ -84,7 +91,7 @@ func main() {
 	for i := 0; i < gkType.TeamPlayerCount; i++ {
 		bestTeam.Goalkeepers = append(
 			bestTeam.Goalkeepers,
-			fmt.Sprintf("[%v] %s (%s)", goalkeepers[i].Player.Form, goalkeepers[i].Player.Name, goalkeepers[i].OpposingTeam.ShortName),
+			playerRow(goalkeepers[i]),
 		)
 	}
 
@@ -93,7 +100,7 @@ func main() {
 	for i := 0; i < defType.TeamPlayerCount; i++ {
 		bestTeam.Defenders = append(
 			bestTeam.Defenders,
-			fmt.Sprintf("[%v] %s (%s)", defenders[i].Player.Form, defenders[i].Player.Name, defenders[i].OpposingTeam.ShortName),
+			playerRow(defenders[i]),
 		)
 	}
 
@@ -102,7 +109,7 @@ func main() {
 	for i := 0; i < midType.TeamPlayerCount; i++ {
 		bestTeam.Midfielders = append(
 			bestTeam.Midfielders,
-			fmt.Sprintf("[%v] %s (%s)", midfielders[i].Player.Form, midfielders[i].Player.Name, midfielders[i].OpposingTeam.ShortName),
+			playerRow(midfielders[i]),
 		)
 	}
 
@@ -111,18 +118,16 @@ func main() {
 	for i := 0; i < fwdType.TeamPlayerCount; i++ {
 		bestTeam.Forwards = append(
 			bestTeam.Forwards,
-			fmt.Sprintf("[%v] %s (%s)", forwards[i].Player.Form, forwards[i].Player.Name, forwards[i].OpposingTeam.ShortName),
+			playerRow(forwards[i]),
 		)
 	}
-
-	gameweek := data.Gameweek(gameWeekInt)
 
 	printOutput(bestTeam, gameweek)
 }
 
 func printOutput(bestTeam bestTeam, gameweek *Gameweek) {
-	fmt.Printf("The best team you could play in %s (deadline %s) is: \n", gameweek.Name, gameweek.Deadline)
-	fmt.Printf("-- [Form] Name (Opponent) -- \n\n")
+	fmt.Printf("\nThe best team you could play in %s (deadline %s) is: \n", gameweek.Name, gameweek.Deadline)
+	fmt.Printf("-- [Form] Name (Opponent) (Most Captained) -- \n\n")
 
 	fmt.Println("Goalkeepers:")
 	for _, goalkeeper := range bestTeam.Goalkeepers {
@@ -143,6 +148,8 @@ func printOutput(bestTeam bestTeam, gameweek *Gameweek) {
 	for _, forward := range bestTeam.Forwards {
 		fmt.Println(forward)
 	}
+
+	fmt.Println()
 }
 
 func filterWinnersByType(likelyWinners []likelyFixtureWinner, playerType string) []likelyFixtureWinner {
@@ -153,4 +160,12 @@ func filterWinnersByType(likelyWinners []likelyFixtureWinner, playerType string)
 		}
 	}
 	return out
+}
+
+func playerRow(likelyWinner likelyFixtureWinner) string {
+	format := "[%v] %s (%s)"
+	if likelyWinner.Player.MostCaptained {
+		format += " (C)"
+	}
+	return fmt.Sprintf(format, likelyWinner.Player.Form, likelyWinner.Player.Name, likelyWinner.OpposingTeam.ShortName)
 }

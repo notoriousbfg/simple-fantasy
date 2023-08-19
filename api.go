@@ -21,9 +21,10 @@ type apiTeam struct {
 }
 
 type apiEvent struct {
-	ID       int       `json:"id"`
-	Name     string    `json:"name"`
-	Deadline time.Time `json:"deadline_time"`
+	ID              int       `json:"id"`
+	Name            string    `json:"name"`
+	Deadline        time.Time `json:"deadline_time"`
+	MostCaptainedID int       `json:"most_captained"`
 }
 
 type apiElement struct {
@@ -130,12 +131,13 @@ type PlayerStats struct {
 type PlayerID int
 
 type Player struct {
-	ID    PlayerID
-	Name  string
-	Form  float32
-	Team  *Team
-	Type  PlayerType
-	Stats PlayerStats
+	ID            PlayerID
+	Name          string
+	Form          float32
+	Team          *Team
+	Type          PlayerType
+	Stats         PlayerStats
+	MostCaptained bool
 }
 
 type TeamID int
@@ -150,9 +152,10 @@ type Team struct {
 type GameweekID int
 
 type Gameweek struct {
-	ID       GameweekID
-	Name     string
-	Deadline string
+	ID              GameweekID
+	Name            string
+	Deadline        string
+	MostCaptainedID PlayerID
 }
 
 type Fixture struct {
@@ -189,9 +192,10 @@ func BuildData() (*Data, error) {
 	for _, apiEvent := range statsResp.Events {
 		gameweekID := GameweekID(apiEvent.ID)
 		gameweek := &Gameweek{
-			ID:       gameweekID,
-			Name:     apiEvent.Name,
-			Deadline: apiEvent.Deadline.Format("02 Jan 15:04"),
+			ID:              gameweekID,
+			Name:            apiEvent.Name,
+			Deadline:        apiEvent.Deadline.Format("02 Jan 15:04"),
+			MostCaptainedID: PlayerID(apiEvent.MostCaptainedID),
 		}
 		gameweeksByID[gameweekID] = gameweek
 		data.Gameweeks = append(data.Gameweeks, *gameweek)
