@@ -121,7 +121,7 @@ func main() {
 }
 
 func printOutput(bestTeam bestTeam, gameweek *Gameweek) {
-	fmt.Printf("The best team you could play in %s is: \n", gameweek.Name)
+	fmt.Printf("The best team you could play in %s (deadline %s) is: \n", gameweek.Name, gameweek.Deadline)
 	fmt.Printf("-- [Form] Name (Opponent) -- \n\n")
 
 	fmt.Println("Goalkeepers:")

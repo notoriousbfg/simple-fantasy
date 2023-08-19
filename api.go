@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 const (
@@ -20,8 +21,9 @@ type apiTeam struct {
 }
 
 type apiEvent struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
+	ID       int       `json:"id"`
+	Name     string    `json:"name"`
+	Deadline time.Time `json:"deadline_time"`
 }
 
 type apiElement struct {
@@ -148,8 +150,9 @@ type Team struct {
 type GameweekID int
 
 type Gameweek struct {
-	ID   GameweekID
-	Name string
+	ID       GameweekID
+	Name     string
+	Deadline string
 }
 
 type Fixture struct {
@@ -186,8 +189,9 @@ func BuildData() (*Data, error) {
 	for _, apiEvent := range statsResp.Events {
 		gameweekID := GameweekID(apiEvent.ID)
 		gameweek := &Gameweek{
-			ID:   gameweekID,
-			Name: apiEvent.Name,
+			ID:       gameweekID,
+			Name:     apiEvent.Name,
+			Deadline: apiEvent.Deadline.Format("02 Jan 15:04"),
 		}
 		gameweeksByID[gameweekID] = gameweek
 		data.Gameweeks = append(data.Gameweeks, *gameweek)
