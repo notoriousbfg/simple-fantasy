@@ -66,6 +66,14 @@ func main() {
 			return playerA.Form > playerB.Form
 		}
 
+		if playerA.Stats.ICTIndexRank != playerB.Stats.ICTIndexRank {
+			return playerA.Stats.ICTIndexRank > playerB.Stats.ICTIndexRank
+		}
+
+		if playerA.Stats.AverageStarts != playerB.Stats.AverageStarts {
+			return playerA.Stats.AverageStarts > playerB.Stats.AverageStarts
+		}
+
 		return likelyWinners[a].Fixture.DifficultyMajority > likelyWinners[b].Fixture.DifficultyMajority
 	})
 
@@ -109,6 +117,10 @@ func main() {
 
 	gameweek := data.Gameweek(gameWeekInt)
 
+	printOutput(bestTeam, gameweek)
+}
+
+func printOutput(bestTeam bestTeam, gameweek *Gameweek) {
 	fmt.Printf("The best team you could play in %s is: \n\n", gameweek.Name)
 
 	fmt.Println("Goalkeepers:")
@@ -120,19 +132,16 @@ func main() {
 	for _, defender := range bestTeam.Defenders {
 		fmt.Println(defender)
 	}
-	fmt.Println()
 
 	fmt.Println("\nMidfielders:")
 	for _, midfielder := range bestTeam.Midfielders {
 		fmt.Println(midfielder)
 	}
-	fmt.Println()
 
 	fmt.Println("\nForwards:")
 	for _, forward := range bestTeam.Forwards {
 		fmt.Println(forward)
 	}
-	fmt.Println()
 }
 
 func filterWinnersByType(likelyWinners []likelyFixtureWinner, playerType string) []likelyFixtureWinner {

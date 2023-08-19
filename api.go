@@ -25,11 +25,22 @@ type apiEvent struct {
 }
 
 type apiElement struct {
-	ID     int    `json:"id"`
-	Name   string `json:"web_name"`
-	Form   string `json:"form"`
-	TypeID int    `json:"element_type"`
-	TeamID int    `json:"team"`
+	ID              int     `json:"id"`
+	Name            string  `json:"web_name"`
+	Form            string  `json:"form"`
+	TypeID          int     `json:"element_type"`
+	TeamID          int     `json:"team"`
+	Minutes         int     `json:"minutes"`
+	Goals           int     `json:"goals_scored"`
+	Assists         int     `json:"assists"`
+	Conceded        int     `json:"goals_conceded"`
+	CleanSheets     int     `json:"clean_sheets"`
+	YellowCards     int     `json:"yellow_cards"`
+	RedCards        int     `json:"red_cards"`
+	Bonus           int     `json:"bonus"`
+	StartsPerNinety float32 `json:"starts_per_90"`
+	ICTIndex        string  `json:"ict_index"`
+	ICTIndexRank    int     `json:"ict_index_rank"`
 }
 
 type apiElementType struct {
@@ -100,14 +111,29 @@ type PlayerType struct {
 	TeamPlayerCount int
 }
 
+type PlayerStats struct {
+	Minutes       int
+	Goals         int
+	Assists       int
+	Conceded      int
+	CleanSheets   int
+	YellowCards   int
+	RedCards      int
+	Bonus         int
+	AverageStarts float32
+	ICTIndex      float32
+	ICTIndexRank  int
+}
+
 type PlayerID int
 
 type Player struct {
-	ID   PlayerID
-	Name string
-	Form float32
-	Team *Team
-	Type PlayerType
+	ID    PlayerID
+	Name  string
+	Form  float32
+	Team  *Team
+	Type  PlayerType
+	Stats PlayerStats
 }
 
 type TeamID int
@@ -208,12 +234,30 @@ func BuildData() (*Data, error) {
 			return &Data{}, fmt.Errorf("missing player type ID '%d'", apiPlayer.TypeID)
 		}
 
+		ictIndex, err := strconv.ParseFloat(apiPlayer.ICTIndex, 32)
+		if err != nil {
+			return &Data{}, err
+		}
+
 		newPlayer := Player{
 			ID:   PlayerID(apiPlayer.ID),
 			Name: apiPlayer.Name,
 			Form: float32(playerForm),
 			Team: playerTeam,
 			Type: playerType,
+			Stats: PlayerStats{
+				Minutes:       apiPlayer.Minutes,
+				Goals:         apiPlayer.Goals,
+				Assists:       apiPlayer.Assists,
+				Conceded:      apiPlayer.Conceded,
+				CleanSheets:   apiPlayer.CleanSheets,
+				YellowCards:   apiPlayer.YellowCards,
+				RedCards:      apiPlayer.RedCards,
+				Bonus:         apiPlayer.Bonus,
+				AverageStarts: apiPlayer.StartsPerNinety,
+				ICTIndex:      float32(ictIndex),
+				ICTIndexRank:  apiPlayer.ICTIndexRank,
+			},
 		}
 
 		teamPlayersByID[newPlayer.Team.ID] = append(
