@@ -57,8 +57,10 @@ type apiFixture struct {
 type apiFixtures []apiFixture
 
 type Data struct {
-	Fixtures []*Fixture
-	Teams    []*Team
+	PlayerTypes []PlayerType
+	Gameweeks   []Gameweek
+	Fixtures    []*Fixture
+	Teams       []*Team
 }
 
 func (d *Data) FixturesByGameWeek(gameweek int) []Fixture {
@@ -69,6 +71,24 @@ func (d *Data) FixturesByGameWeek(gameweek int) []Fixture {
 		}
 	}
 	return fixtures
+}
+
+func (d *Data) Gameweek(gw int) *Gameweek {
+	for _, gameweek := range d.Gameweeks {
+		if gameweek.ID == GameweekID(gw) {
+			return &gameweek
+		}
+	}
+	return nil
+}
+
+func (d *Data) PlayerType(pt string) *PlayerType {
+	for _, playerType := range d.PlayerTypes {
+		if playerType.Name == pt {
+			return &playerType
+		}
+	}
+	return nil
 }
 
 type PlayerTypeID int
@@ -127,13 +147,24 @@ func BuildData() (*Data, error) {
 		panic(err)
 	}
 
+	for _, apiElementType := range statsResp.ElementTypes {
+		data.PlayerTypes = append(data.PlayerTypes, PlayerType{
+			ID:              PlayerTypeID(apiElementType.ID),
+			Name:            apiElementType.Name,
+			PluralName:      apiElementType.PluralName,
+			TeamPlayerCount: apiElementType.PlayerCount,
+		})
+	}
+
 	gameweeksByID := make(map[GameweekID]*Gameweek, 0)
 	for _, apiEvent := range statsResp.Events {
 		gameweekID := GameweekID(apiEvent.ID)
-		gameweeksByID[gameweekID] = &Gameweek{
+		gameweek := &Gameweek{
 			ID:   gameweekID,
 			Name: apiEvent.Name,
 		}
+		gameweeksByID[gameweekID] = gameweek
+		data.Gameweeks = append(data.Gameweeks, *gameweek)
 	}
 
 	var teams []*Team

@@ -64,103 +64,70 @@ func main() {
 		return likelyWinners[a].Fixture.DifficultyMajority > likelyWinners[b].Fixture.DifficultyMajority
 	})
 
-	// var bestTeam bestTeam
+	var bestTeam bestTeam
 
-	// var bestTeam bestTeam
-	// for playerTypeID, players := range likelyWinnerPlayersByType {
-	// 	// expensive, probably
-	// sort.Slice(players, func(i, j int) bool {
-	// 	playerIForm, err := strconv.ParseFloat(players[i].Form, 32)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-
-	// 	playerJForm, err := strconv.ParseFloat(players[j].Form, 32)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-
-	// 	if playerIForm != playerJForm {
-	// 		return playerIForm > playerJForm
-	// 	}
-
-	// 	playerITeamDifficultyMajority := likelyWinnerMap[players[i].TeamID].DifficultyMajority
-	// 	playerJTeamDifficultyMajority := likelyWinnerMap[players[j].TeamID].DifficultyMajority
-
-	// 	return playerITeamDifficultyMajority > playerJTeamDifficultyMajority
-	// })
-
-	// 	playerType := playerTypeMap[playerTypeID]
-
+	gkType := data.PlayerType("Goalkeeper")
 	goalkeepers := filterWinnersByType(likelyWinners, "Goalkeeper")
+	for i := 0; i < gkType.TeamPlayerCount; i++ {
+		bestTeam.Goalkeepers = append(
+			bestTeam.Goalkeepers,
+			fmt.Sprintf("[%v] %s", goalkeepers[i].Player.Form, goalkeepers[i].Player.Name),
+		)
+	}
 
-	fmt.Print(goalkeepers)
+	defType := data.PlayerType("Defender")
+	defenders := filterWinnersByType(likelyWinners, "Defender")
+	for i := 0; i < defType.TeamPlayerCount; i++ {
+		bestTeam.Defenders = append(
+			bestTeam.Defenders,
+			fmt.Sprintf("[%v] %s", defenders[i].Player.Form, defenders[i].Player.Name),
+		)
+	}
 
-	// 	// i'm sure there's a better way of doing this
-	// 	if playerType.Name == "Goalkeepers" {
-	// 		for i := 0; i < playerType.PlayerCount; i++ {
-	// 			bestTeam.Goalkeepers = append(
-	// 				bestTeam.Goalkeepers,
-	// 				fmt.Sprintf("[%s] %s (%s)", players[i].Form, players[i].Name, players[i].Team.Opponent.Name),
-	// 			)
-	// 		}
-	// 	}
+	midType := data.PlayerType("Midfielder")
+	midfielders := filterWinnersByType(likelyWinners, "Midfielder")
+	for i := 0; i < midType.TeamPlayerCount; i++ {
+		bestTeam.Midfielders = append(
+			bestTeam.Midfielders,
+			fmt.Sprintf("[%v] %s", midfielders[i].Player.Form, midfielders[i].Player.Name),
+		)
+	}
 
-	// 	if playerType.Name == "Defenders" {
-	// 		for i := 0; i < playerType.PlayerCount; i++ {
-	// 			bestTeam.Defenders = append(
-	// 				bestTeam.Defenders,
-	// 				fmt.Sprintf("[%s] %s (%s)", players[i].Form, players[i].Name, players[i].Team.Opponent.Name),
-	// 			)
-	// 		}
-	// 	}
+	fwdType := data.PlayerType("Forward")
+	forwards := filterWinnersByType(likelyWinners, "Forward")
+	for i := 0; i < fwdType.TeamPlayerCount; i++ {
+		bestTeam.Forwards = append(
+			bestTeam.Forwards,
+			fmt.Sprintf("[%v] %s", forwards[i].Player.Form, forwards[i].Player.Name),
+		)
+	}
 
-	// 	if playerType.Name == "Midfielders" {
-	// 		for i := 0; i < playerType.PlayerCount; i++ {
-	// 			bestTeam.Midfielders = append(
-	// 				bestTeam.Midfielders,
-	// 				fmt.Sprintf("[%s] %s (%s)", players[i].Form, players[i].Name, players[i].Team.Opponent.Name),
-	// 			)
-	// 		}
-	// 	}
+	gameweek := data.Gameweek(gameWeekInt)
 
-	// 	if playerType.Name == "Forwards" {
-	// 		for i := 0; i < playerType.PlayerCount; i++ {
-	// 			bestTeam.Forwards = append(
-	// 				bestTeam.Forwards,
-	// 				fmt.Sprintf("[%s] %s (%s)", players[i].Form, players[i].Name, players[i].Team.Opponent.Name),
-	// 			)
-	// 		}
-	// 	}
-	// }
+	fmt.Printf("The best team you could play in %s is: \n\n", gameweek.Name)
 
-	// fmt.Println()
-	// fmt.Printf("The best team you could play in %s is: \n", gameweek.Name)
-	// fmt.Println()
+	fmt.Println("Goalkeepers:")
+	for _, goalkeeper := range bestTeam.Goalkeepers {
+		fmt.Println(goalkeeper)
+	}
 
-	// fmt.Println("Goalkeepers:")
-	// for _, goalkeeper := range bestTeam.Goalkeepers {
-	// 	fmt.Println(goalkeeper)
-	// }
-	// fmt.Println()
+	fmt.Println("\nDefenders:")
+	for _, defender := range bestTeam.Defenders {
+		fmt.Println(defender)
+	}
+	fmt.Println()
 
-	// fmt.Println("Defenders:")
-	// for _, defender := range bestTeam.Defenders {
-	// 	fmt.Println(defender)
-	// }
-	// fmt.Println()
+	fmt.Println("\nMidfielders:")
+	for _, midfielder := range bestTeam.Midfielders {
+		fmt.Println(midfielder)
+	}
+	fmt.Println()
 
-	// fmt.Println("Midfielders:")
-	// for _, midfielder := range bestTeam.Midfielders {
-	// 	fmt.Println(midfielder)
-	// }
-	// fmt.Println()
-
-	// fmt.Println("Forwards:")
-	// for _, forward := range bestTeam.Forwards {
-	// 	fmt.Println(forward)
-	// }
-	// fmt.Println()
+	fmt.Println("\nForwards:")
+	for _, forward := range bestTeam.Forwards {
+		fmt.Println(forward)
+	}
+	fmt.Println()
 }
 
 func filterWinnersByType(likelyWinners []likelyFixtureWinner, playerType string) []likelyFixtureWinner {
