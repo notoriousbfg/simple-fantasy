@@ -47,11 +47,13 @@ type apiElement struct {
 }
 
 type apiElementType struct {
-	ID          int    `json:"id"`
-	Name        string `json:"singular_name"`
-	PluralName  string `json:"plural_name"`
-	ShortName   string `json:"singular_name_short"`
-	PlayerCount int    `json:"squad_select"`
+	ID           int    `json:"id"`
+	Name         string `json:"singular_name"`
+	PluralName   string `json:"plural_name"`
+	ShortName    string `json:"singular_name_short"`
+	PlayerCount  int    `json:"squad_select"`
+	SquadMinPlay int    `json:"squad_min_play"`
+	SquadMaxPlay int    `json:"squad_max_play"`
 }
 
 type apiStats struct {
@@ -109,11 +111,13 @@ func (d *Data) PlayerType(pt string) *PlayerType {
 type PlayerTypeID int
 
 type PlayerType struct {
-	ID              PlayerTypeID
-	Name            string
-	PluralName      string
-	ShortName       string
-	TeamPlayerCount int
+	ID               PlayerTypeID
+	Name             string
+	PluralName       string
+	ShortName        string
+	TeamPlayerCount  int
+	TeamMinPlayCount int
+	TeamMaxPlayCount int
 }
 
 type PlayerStats struct {
@@ -210,11 +214,13 @@ func BuildData() (*Data, error) {
 	playerTypesByID := make(map[PlayerTypeID]PlayerType, 0)
 	for _, apiElementType := range statsResp.ElementTypes {
 		newType := PlayerType{
-			ID:              PlayerTypeID(apiElementType.ID),
-			Name:            apiElementType.Name,
-			PluralName:      apiElementType.PluralName,
-			ShortName:       apiElementType.ShortName,
-			TeamPlayerCount: apiElementType.PlayerCount,
+			ID:               PlayerTypeID(apiElementType.ID),
+			Name:             apiElementType.Name,
+			PluralName:       apiElementType.PluralName,
+			ShortName:        apiElementType.ShortName,
+			TeamPlayerCount:  apiElementType.PlayerCount,
+			TeamMinPlayCount: apiElementType.SquadMinPlay,
+			TeamMaxPlayCount: apiElementType.SquadMaxPlay,
 		}
 		playerTypeID := PlayerTypeID(apiElementType.ID)
 		playerTypesByID[playerTypeID] = newType
