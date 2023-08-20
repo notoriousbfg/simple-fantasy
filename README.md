@@ -8,29 +8,20 @@ A very crude tool that lists the "perfect team" for a Premier League fantasy gam
 
 e.g.
 ```
-The best team you could play in Gameweek 3 (deadline 25 Aug 17:30) is:
--- [Form] Name (Opponent) (Most Captained) --
-
-Goalkeepers:
-[6] Ederson M. (SHU)
-[5.5] Onana (NFO)
-
-Defenders:
-[8.5] Estupiñan (WHU)
-[7.5] R.Varane (NFO)
-[6.5] Romero (BOU)
-[6.5] Wan-Bissaka (NFO)
-[6] Walker (SHU)
-
-Midfielders:
-[10.5] March (WHU)
-[10] Mbeumo (CRY)
-[8] Rodrigo (SHU)
-[7.5] Mitoma (WHU)
-[6] Maddison (BOU)
-
-Forwards:
-[9] Wissa (CRY)
-[7.5] Haaland (SHU) (C)
-[5] J.Alvarez (SHU)
+Type  Name         Form  Opponent
+GKP   Vicario      6     Bournemouth
+GKP   Ederson M.   6     Sheffield Utd
+DEF   Estupiñan    9     West Ham
+DEF   R.Varane     7.5   Nott'm Forest
+DEF   Akanji       6.5   Sheffield Utd
+DEF   Wan-Bissaka  6.5   Nott'm Forest
+DEF   Romero       6.5   Bournemouth
+MID   March        12    West Ham
+MID   Mbeumo       11.5  Crystal Palace
+MID   Mitoma       8.5   West Ham
+MID   Rodrigo      8     Sheffield Utd
+MID   Foden        6     Sheffield Utd
+FWD   Wissa        10    Crystal Palace
+FWD   Haaland (C)  7.5   Sheffield Utd
+FWD   J.Alvarez    6     Sheffield Utd
 ```

@@ -5,6 +5,9 @@ import (
 	"os"
 	"sort"
 	"strconv"
+
+	"github.com/fatih/color"
+	"github.com/rodaine/table"
 )
 
 type likelyFixtureWinner struct {
@@ -14,10 +17,10 @@ type likelyFixtureWinner struct {
 }
 
 type bestTeam struct {
-	Goalkeepers []string
-	Defenders   []string
-	Midfielders []string
-	Forwards    []string
+	Goalkeepers []likelyFixtureWinner
+	Defenders   []likelyFixtureWinner
+	Midfielders []likelyFixtureWinner
+	Forwards    []likelyFixtureWinner
 }
 
 func main() {
@@ -91,7 +94,7 @@ func main() {
 	for i := 0; i < gkType.TeamPlayerCount; i++ {
 		bestTeam.Goalkeepers = append(
 			bestTeam.Goalkeepers,
-			playerRow(goalkeepers[i]),
+			goalkeepers[i],
 		)
 	}
 
@@ -100,7 +103,7 @@ func main() {
 	for i := 0; i < defType.TeamPlayerCount; i++ {
 		bestTeam.Defenders = append(
 			bestTeam.Defenders,
-			playerRow(defenders[i]),
+			defenders[i],
 		)
 	}
 
@@ -109,7 +112,7 @@ func main() {
 	for i := 0; i < midType.TeamPlayerCount; i++ {
 		bestTeam.Midfielders = append(
 			bestTeam.Midfielders,
-			playerRow(midfielders[i]),
+			midfielders[i],
 		)
 	}
 
@@ -118,38 +121,23 @@ func main() {
 	for i := 0; i < fwdType.TeamPlayerCount; i++ {
 		bestTeam.Forwards = append(
 			bestTeam.Forwards,
-			playerRow(forwards[i]),
+			forwards[i],
 		)
 	}
-
 	printOutput(bestTeam, gameweek)
 }
 
 func printOutput(bestTeam bestTeam, gameweek *Gameweek) {
+	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
+	columnFmt := color.New(color.FgYellow).SprintfFunc()
+	tbl := table.New("Type", "Name", "Form", "Opponent")
+	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 	fmt.Printf("\nThe best team you could play in %s (deadline %s) is: \n", gameweek.Name, gameweek.Deadline)
-	fmt.Printf("-- [Form] Name (Opponent) (Most Captained) -- \n\n")
-
-	fmt.Println("Goalkeepers:")
-	for _, goalkeeper := range bestTeam.Goalkeepers {
-		fmt.Println(goalkeeper)
-	}
-
-	fmt.Println("\nDefenders:")
-	for _, defender := range bestTeam.Defenders {
-		fmt.Println(defender)
-	}
-
-	fmt.Println("\nMidfielders:")
-	for _, midfielder := range bestTeam.Midfielders {
-		fmt.Println(midfielder)
-	}
-
-	fmt.Println("\nForwards:")
-	for _, forward := range bestTeam.Forwards {
-		fmt.Println(forward)
-	}
-
-	fmt.Println()
+	appendToTable(tbl, bestTeam.Goalkeepers)
+	appendToTable(tbl, bestTeam.Defenders)
+	appendToTable(tbl, bestTeam.Midfielders)
+	appendToTable(tbl, bestTeam.Forwards)
+	tbl.Print()
 }
 
 func filterWinnersByType(likelyWinners []likelyFixtureWinner, playerType string) []likelyFixtureWinner {
@@ -162,10 +150,19 @@ func filterWinnersByType(likelyWinners []likelyFixtureWinner, playerType string)
 	return out
 }
 
-func playerRow(likelyWinner likelyFixtureWinner) string {
-	format := "[%v] %s (%s)"
-	if likelyWinner.Player.MostCaptained {
-		format += " (C)"
+func appendToTable(tbl table.Table, fixtureWinners []likelyFixtureWinner) {
+	for _, fixtureWinner := range fixtureWinners {
+		playerName := fixtureWinner.Player.Name
+
+		if fixtureWinner.Player.MostCaptained {
+			playerName += " (C)"
+		}
+
+		tbl.AddRow(
+			fixtureWinner.Player.Type.ShortName,
+			playerName,
+			fixtureWinner.Player.Form,
+			fixtureWinner.OpposingTeam.Name,
+		)
 	}
-	return fmt.Sprintf(format, likelyWinner.Player.Form, likelyWinner.Player.Name, likelyWinner.OpposingTeam.ShortName)
 }

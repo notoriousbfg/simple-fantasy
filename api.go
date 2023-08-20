@@ -50,6 +50,7 @@ type apiElementType struct {
 	ID          int    `json:"id"`
 	Name        string `json:"singular_name"`
 	PluralName  string `json:"plural_name"`
+	ShortName   string `json:"singular_name_short"`
 	PlayerCount int    `json:"squad_select"`
 }
 
@@ -111,6 +112,7 @@ type PlayerType struct {
 	ID              PlayerTypeID
 	Name            string
 	PluralName      string
+	ShortName       string
 	TeamPlayerCount int
 }
 
@@ -179,15 +181,6 @@ func BuildData() (*Data, error) {
 		panic(err)
 	}
 
-	for _, apiElementType := range statsResp.ElementTypes {
-		data.PlayerTypes = append(data.PlayerTypes, PlayerType{
-			ID:              PlayerTypeID(apiElementType.ID),
-			Name:            apiElementType.Name,
-			PluralName:      apiElementType.PluralName,
-			TeamPlayerCount: apiElementType.PlayerCount,
-		})
-	}
-
 	gameweeksByID := make(map[GameweekID]*Gameweek, 0)
 	for _, apiEvent := range statsResp.Events {
 		gameweekID := GameweekID(apiEvent.ID)
@@ -215,14 +208,17 @@ func BuildData() (*Data, error) {
 	data.Teams = teams
 
 	playerTypesByID := make(map[PlayerTypeID]PlayerType, 0)
-	for _, apiPlayerType := range statsResp.ElementTypes {
-		playerTypeID := PlayerTypeID(apiPlayerType.ID)
-		playerTypesByID[playerTypeID] = PlayerType{
-			ID:              playerTypeID,
-			Name:            apiPlayerType.Name,
-			PluralName:      apiPlayerType.PluralName,
-			TeamPlayerCount: apiPlayerType.PlayerCount,
+	for _, apiElementType := range statsResp.ElementTypes {
+		newType := PlayerType{
+			ID:              PlayerTypeID(apiElementType.ID),
+			Name:            apiElementType.Name,
+			PluralName:      apiElementType.PluralName,
+			ShortName:       apiElementType.ShortName,
+			TeamPlayerCount: apiElementType.PlayerCount,
 		}
+		playerTypeID := PlayerTypeID(apiElementType.ID)
+		playerTypesByID[playerTypeID] = newType
+		data.PlayerTypes = append(data.PlayerTypes, newType)
 	}
 
 	teamPlayersByID := make(map[TeamID][]Player, 0)
