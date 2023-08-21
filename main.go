@@ -161,7 +161,7 @@ func main() {
 func printOutput(bestTeam bestTeam, gameweek *Gameweek) {
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
-	tbl := table.New("Type", "Name", "Form", "Score", "Opponent")
+	tbl := table.New("Type", "Name", "Form", "Score", "Cost", "Opponent")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 	fmt.Printf("\nThe best team you can play in %s (deadline %s) is: \n", gameweek.Name, gameweek.Deadline)
 	appendToTable(tbl, bestTeam.Goalkeepers)
@@ -184,6 +184,7 @@ func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer) {
 			playerName,
 			fixtureWinner.Player.Form,
 			fixtureWinner.Score(),
+			fixtureWinner.Player.Cost,
 			fixtureWinner.OpposingTeam.Name,
 		)
 	}

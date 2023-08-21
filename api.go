@@ -31,6 +31,7 @@ type apiElement struct {
 	ID              int     `json:"id"`
 	Name            string  `json:"web_name"`
 	Form            string  `json:"form"`
+	Cost            int     `json:"now_cost"`
 	TypeID          int     `json:"element_type"`
 	TeamID          int     `json:"team"`
 	Minutes         int     `json:"minutes"`
@@ -140,6 +141,7 @@ type Player struct {
 	ID            PlayerID
 	Name          string
 	Form          float32
+	Cost          string
 	Team          *Team
 	Type          PlayerType
 	Stats         PlayerStats
@@ -253,6 +255,7 @@ func BuildData() (*Data, error) {
 			ID:   PlayerID(apiPlayer.ID),
 			Name: apiPlayer.Name,
 			Form: float32(playerForm),
+			Cost: fmt.Sprintf("£%.1fm", float32(apiPlayer.Cost)/float32(10)),
 			Team: playerTeam,
 			Type: playerType,
 			Stats: PlayerStats{
