@@ -18,7 +18,15 @@ type StartingPlayer struct {
 }
 
 func (sp StartingPlayer) Score() float32 {
-	return ((((sp.Player.Form) * sp.Player.Stats.ICTIndex) * sp.Player.Stats.AverageStarts) * float32(sp.Fixture.DifficultyMajority))
+	chanceOfPlaying, ok := sp.Player.ChanceOfPlaying[sp.Fixture.Gameweek.ID]
+	if !ok {
+		chanceOfPlaying = 1
+	}
+
+	return sp.Player.Form *
+		sp.Player.Stats.ICTIndex *
+		float32(sp.Fixture.DifficultyMajority) *
+		chanceOfPlaying
 }
 
 type StartingEleven map[string][]StartingPlayer
@@ -68,10 +76,18 @@ func main() {
 		panic(err)
 	}
 
-	gameweek := data.Gameweek(gameWeekInt)
-	previousGameweek := data.Gameweek(gameWeekInt - 1)
+	var gameweek *Gameweek
 
-	likelyWinnerPlayers := make([]StartingPlayer, 0)
+	if gameWeekInt > 0 {
+		gameweek = data.Gameweek(gameWeekInt)
+	} else {
+		gameweek = data.CurrentGameweek()
+	}
+
+	previousGameweek := data.Gameweek(int(gameweek.ID) - 1)
+
+	// set used in case multiple fixtures in one gameweek for a team
+	likelyWinnerPlayersSet := make(map[PlayerID]StartingPlayer, 0)
 	for _, fixture := range data.FixturesByGameWeek(gameWeekInt) {
 		var likelyWinner Team
 		var opposingTeam Team
@@ -87,12 +103,18 @@ func main() {
 				player.MostCaptained = (previousGameweek.MostCaptainedID == player.ID)
 			}
 
-			likelyWinnerPlayers = append(likelyWinnerPlayers, StartingPlayer{
+			// player already exists
+			likelyWinnerPlayersSet[player.ID] = StartingPlayer{
 				Player:       player,
 				Fixture:      fixture,
 				OpposingTeam: opposingTeam,
-			})
+			}
 		}
+	}
+
+	likelyWinnerPlayers := make([]StartingPlayer, 0)
+	for _, player := range likelyWinnerPlayersSet {
+		likelyWinnerPlayers = append(likelyWinnerPlayers, player)
 	}
 
 	sortStartingPlayers(likelyWinnerPlayers)
@@ -163,7 +185,11 @@ func printOutput(bestTeam bestTeam, gameweek *Gameweek) {
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 	tbl := table.New("Type", "Name", "Form", "Score", "Cost", "Opponent")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-	fmt.Printf("\nThe best team you can play in %s (deadline %s) is: \n", gameweek.Name, gameweek.Deadline)
+	if gameweek.IsCurrent {
+		fmt.Printf("\nThe best team you could have played going into the current gameweek (deadline %s) was: \n", gameweek.Deadline)
+	} else {
+		fmt.Printf("\nThe best team you can play in %s (deadline %s) is: \n", gameweek.Name, gameweek.Deadline)
+	}
 	appendToTable(tbl, bestTeam.Goalkeepers)
 	appendToTable(tbl, bestTeam.Defenders)
 	appendToTable(tbl, bestTeam.Midfielders)

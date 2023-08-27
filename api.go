@@ -24,27 +24,31 @@ type apiEvent struct {
 	ID              int       `json:"id"`
 	Name            string    `json:"name"`
 	Deadline        time.Time `json:"deadline_time"`
+	IsCurrent       bool      `json:"is_current"`
 	MostCaptainedID int       `json:"most_captained"`
 }
 
 type apiElement struct {
-	ID              int     `json:"id"`
-	Name            string  `json:"web_name"`
-	Form            string  `json:"form"`
-	Cost            int     `json:"now_cost"`
-	TypeID          int     `json:"element_type"`
-	TeamID          int     `json:"team"`
-	Minutes         int     `json:"minutes"`
-	Goals           int     `json:"goals_scored"`
-	Assists         int     `json:"assists"`
-	Conceded        int     `json:"goals_conceded"`
-	CleanSheets     int     `json:"clean_sheets"`
-	YellowCards     int     `json:"yellow_cards"`
-	RedCards        int     `json:"red_cards"`
-	Bonus           int     `json:"bonus"`
-	StartsPerNinety float32 `json:"starts_per_90"`
-	ICTIndex        string  `json:"ict_index"`
-	ICTIndexRank    int     `json:"ict_index_rank"`
+	ID                       int     `json:"id"`
+	Name                     string  `json:"web_name"`
+	Form                     string  `json:"form"`
+	Cost                     int     `json:"now_cost"`
+	TypeID                   int     `json:"element_type"`
+	TeamID                   int     `json:"team"`
+	Minutes                  int     `json:"minutes"`
+	Goals                    int     `json:"goals_scored"`
+	Assists                  int     `json:"assists"`
+	Conceded                 int     `json:"goals_conceded"`
+	CleanSheets              int     `json:"clean_sheets"`
+	YellowCards              int     `json:"yellow_cards"`
+	RedCards                 int     `json:"red_cards"`
+	Bonus                    int     `json:"bonus"`
+	StartsPerNinety          float32 `json:"starts_per_90"`
+	ICTIndex                 string  `json:"ict_index"`
+	ICTIndexRank             int     `json:"ict_index_rank"`
+	News                     string  `json:"news"`
+	ChanceOfPlayingThisRound *int    `json:"chance_of_playing_this_round"`
+	ChanceOfPlayingNextRound *int    `json:"chance_of_playing_next_round"`
 }
 
 type apiElementType struct {
@@ -100,6 +104,15 @@ func (d *Data) Gameweek(gw int) *Gameweek {
 	return nil
 }
 
+func (d *Data) CurrentGameweek() *Gameweek {
+	for _, gameweek := range d.Gameweeks {
+		if gameweek.IsCurrent {
+			return &gameweek
+		}
+	}
+	return nil
+}
+
 func (d *Data) PlayerType(pt string) *PlayerType {
 	for _, playerType := range d.PlayerTypes {
 		if playerType.Name == pt {
@@ -135,17 +148,20 @@ type PlayerStats struct {
 	ICTIndexRank  int
 }
 
+type PlayerRoundProbability map[GameweekID]float32
+
 type PlayerID int
 
 type Player struct {
-	ID            PlayerID
-	Name          string
-	Form          float32
-	Cost          string
-	Team          *Team
-	Type          PlayerType
-	Stats         PlayerStats
-	MostCaptained bool
+	ID              PlayerID
+	Name            string
+	Form            float32
+	Cost            string
+	Team            *Team
+	Type            PlayerType
+	Stats           PlayerStats
+	ChanceOfPlaying PlayerRoundProbability
+	MostCaptained   bool
 }
 
 type TeamID int
@@ -163,6 +179,7 @@ type Gameweek struct {
 	ID              GameweekID
 	Name            string
 	Deadline        string
+	IsCurrent       bool
 	MostCaptainedID PlayerID
 }
 
@@ -187,13 +204,19 @@ func BuildData() (*Data, error) {
 		panic(err)
 	}
 
+	var currentGameweekID GameweekID
+
 	gameweeksByID := make(map[GameweekID]*Gameweek, 0)
 	for _, apiEvent := range statsResp.Events {
 		gameweekID := GameweekID(apiEvent.ID)
+		if apiEvent.IsCurrent {
+			currentGameweekID = gameweekID
+		}
 		gameweek := &Gameweek{
 			ID:              gameweekID,
 			Name:            apiEvent.Name,
 			Deadline:        apiEvent.Deadline.Format("02 Jan 15:04"),
+			IsCurrent:       apiEvent.IsCurrent,
 			MostCaptainedID: PlayerID(apiEvent.MostCaptainedID),
 		}
 		gameweeksByID[gameweekID] = gameweek
@@ -251,11 +274,32 @@ func BuildData() (*Data, error) {
 			return &Data{}, err
 		}
 
+		formattedCost := fmt.Sprintf("£%.1fm", float32(apiPlayer.Cost)/float32(10))
+
+		var chanceOfPlayingThisRound float32
+		if apiPlayer.ChanceOfPlayingThisRound == nil {
+			chanceOfPlayingThisRound = 1
+		} else {
+			chanceOfPlayingThisRound = float32(*apiPlayer.ChanceOfPlayingThisRound) / 100
+		}
+
+		var chanceOfPlayingNextRound float32
+		if apiPlayer.ChanceOfPlayingNextRound == nil {
+			chanceOfPlayingNextRound = 1
+		} else {
+			chanceOfPlayingNextRound = float32(*apiPlayer.ChanceOfPlayingNextRound) / 100
+		}
+
+		chanceOfPlaying := map[GameweekID]float32{
+			currentGameweekID:     chanceOfPlayingThisRound,
+			currentGameweekID + 1: chanceOfPlayingNextRound, // assumes next round is gameweek ID + 1
+		}
+
 		newPlayer := Player{
 			ID:   PlayerID(apiPlayer.ID),
 			Name: apiPlayer.Name,
 			Form: float32(playerForm),
-			Cost: fmt.Sprintf("£%.1fm", float32(apiPlayer.Cost)/float32(10)),
+			Cost: formattedCost,
 			Team: playerTeam,
 			Type: playerType,
 			Stats: PlayerStats{
@@ -271,6 +315,7 @@ func BuildData() (*Data, error) {
 				ICTIndex:      float32(ictIndex),
 				ICTIndexRank:  apiPlayer.ICTIndexRank,
 			},
+			ChanceOfPlaying: chanceOfPlaying,
 		}
 
 		teamPlayersByID[newPlayer.Team.ID] = append(
