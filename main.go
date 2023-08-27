@@ -6,9 +6,13 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/fatih/color"
 	"github.com/rodaine/table"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 type StartingPlayer struct {
@@ -71,6 +75,11 @@ func main() {
 		panic(err)
 	}
 
+	var playerName string
+	if len(args) > 1 {
+		playerName = args[1]
+	}
+
 	data, err := BuildData()
 	if err != nil {
 		panic(err)
@@ -118,6 +127,34 @@ func main() {
 	}
 
 	sortStartingPlayers(likelyWinnerPlayers)
+
+	if playerName != "" {
+		var matchingPlayer StartingPlayer
+		overallRanking := 0
+		typeRankings := make(map[PlayerTypeID]int, 0)
+		t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+		for _, player := range likelyWinnerPlayers {
+			overallRanking++
+			typeRankings[player.Player.Type.ID]++
+			// this is probably pretty sloppy
+			result, _, _ := transform.String(t, player.Player.Name)
+			if playerName == result {
+				matchingPlayer = player
+				break
+			}
+		}
+		if matchingPlayer.Player.Name == "" {
+			fmt.Printf("player '%s' not found or is not a probable winner for this gameweek\n", playerName)
+			return
+		}
+		fmt.Printf("Player: %s, Type: %s\n", matchingPlayer.Player.Name, matchingPlayer.Player.Type.Name)
+		fmt.Printf("Cost: %s\n", matchingPlayer.Player.Cost)
+		fmt.Printf("Form: %.2f\n", matchingPlayer.Player.Form)
+		fmt.Printf("Score: %.0f\n", matchingPlayer.Score())
+		fmt.Printf("Overall Rank: %s, by Type: %s\n", ordinalNumber(overallRanking), ordinalNumber(typeRankings[matchingPlayer.Player.Type.ID]))
+		fmt.Printf("Opposition: %s\n", matchingPlayer.OpposingTeam.Name)
+		return
+	}
 
 	positionCountCombinations := [][]int{
 		{1, 3, 5, 2},
@@ -230,4 +267,21 @@ func sortStartingPlayers(startingPlayers []StartingPlayer) {
 	sort.Slice(startingPlayers, func(i, j int) bool {
 		return startingPlayers[i].Score() > startingPlayers[j].Score()
 	})
+}
+
+func ordinalNumber(n int) string {
+	if n >= 11 && n <= 13 {
+		return fmt.Sprintf("%dth", n)
+	}
+
+	switch n % 10 {
+	case 1:
+		return fmt.Sprintf("%dst", n)
+	case 2:
+		return fmt.Sprintf("%dnd", n)
+	case 3:
+		return fmt.Sprintf("%drd", n)
+	default:
+		return fmt.Sprintf("%dth", n)
+	}
 }
