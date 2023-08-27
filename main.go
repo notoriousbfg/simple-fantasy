@@ -134,26 +134,36 @@ func main() {
 		key := strings.Trim(strings.Join(strings.Fields(fmt.Sprint(combination)), "-"), "[]") // e.g. 1-3-5-2
 
 		startingEleven := StartingEleven{}
+		teamPlayerCounts := make(map[TeamID]int, 0)
 
 		// assumes players are in descending score order
 		for _, player := range likelyWinnerPlayers {
+			// you can only have 3 players from one team in your selection, continue to next ranking player
+			if teamPlayerCounts[player.Player.Team.ID] >= 3 {
+				continue
+			}
+
 			position := player.Player.Type.Name
 			switch position {
 			case "Goalkeeper":
 				if len(startingEleven[position]) < combination[0] {
 					startingEleven[position] = append(startingEleven[position], player)
+					teamPlayerCounts[player.Player.Team.ID]++
 				}
 			case "Defender":
 				if len(startingEleven[position]) < combination[1] {
 					startingEleven[position] = append(startingEleven[position], player)
+					teamPlayerCounts[player.Player.Team.ID]++
 				}
 			case "Midfielder":
 				if len(startingEleven[position]) < combination[2] {
 					startingEleven[position] = append(startingEleven[position], player)
+					teamPlayerCounts[player.Player.Team.ID]++
 				}
 			case "Forward":
 				if len(startingEleven[position]) < combination[3] {
 					startingEleven[position] = append(startingEleven[position], player)
+					teamPlayerCounts[player.Player.Team.ID]++
 				}
 			}
 		}
