@@ -19,6 +19,8 @@ type StartingPlayer struct {
 	Player       Player
 	Fixture      Fixture
 	OpposingTeam Team
+	OverallRank  string
+	TypeRank     string
 }
 
 func (sp StartingPlayer) Score() float32 {
@@ -128,14 +130,24 @@ func main() {
 
 	sortStartingPlayers(likelyWinnerPlayers)
 
+	rankedStartingPlayers := make([]StartingPlayer, 0)
+
+	overallRanking := 0
+	typeRankings := make(map[PlayerTypeID]int, 0)
+
+	for _, player := range likelyWinnerPlayers {
+		overallRanking++
+		typeRankings[player.Player.Type.ID]++
+
+		player.OverallRank = ordinalNumber(overallRanking)
+		player.TypeRank = ordinalNumber(typeRankings[player.Player.Type.ID])
+		rankedStartingPlayers = append(rankedStartingPlayers, player)
+	}
+
 	if playerName != "" {
 		var matchingPlayer StartingPlayer
-		overallRanking := 0
-		typeRankings := make(map[PlayerTypeID]int, 0)
 		t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
-		for _, player := range likelyWinnerPlayers {
-			overallRanking++
-			typeRankings[player.Player.Type.ID]++
+		for _, player := range rankedStartingPlayers {
 			// this is probably pretty sloppy
 			result, _, _ := transform.String(t, player.Player.Name)
 			if playerName == result {
@@ -151,7 +163,7 @@ func main() {
 		fmt.Printf("Cost: %s\n", matchingPlayer.Player.Cost)
 		fmt.Printf("Form: %.2f\n", matchingPlayer.Player.Form)
 		fmt.Printf("Score: %.0f\n", matchingPlayer.Score())
-		fmt.Printf("Overall Rank: %s, by Type: %s\n", ordinalNumber(overallRanking), ordinalNumber(typeRankings[matchingPlayer.Player.Type.ID]))
+		fmt.Printf("Overall Rank: %s, by Type: %s\n", matchingPlayer.OverallRank, matchingPlayer.TypeRank)
 		fmt.Printf("Opposition: %s\n", matchingPlayer.OpposingTeam.Name)
 		return
 	}
@@ -174,7 +186,7 @@ func main() {
 		teamPlayerCounts := make(map[TeamID]int, 0)
 
 		// assumes players are in descending score order
-		for _, player := range likelyWinnerPlayers {
+		for _, player := range rankedStartingPlayers {
 			// you can only have 3 players from one team in your selection, continue to next ranking player
 			if teamPlayerCounts[player.Player.Team.ID] >= 3 {
 				continue
@@ -230,7 +242,7 @@ func main() {
 func printOutput(bestTeam bestTeam, gameweek *Gameweek) {
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
-	tbl := table.New("Type", "Name", "Form", "Score", "Cost", "Opponent")
+	tbl := table.New("Type", "Name", "Form", "Score", "Rank (Type)", "Cost", "Opponent")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 	if gameweek.IsCurrent {
 		fmt.Printf("\nThe best team you could have played going into the current gameweek (deadline %s) was: \n", gameweek.Deadline)
@@ -257,6 +269,7 @@ func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer) {
 			playerName,
 			fixtureWinner.Player.Form,
 			fmt.Sprintf("%.0f", fixtureWinner.Score()),
+			fmt.Sprintf("%s (%s)", fixtureWinner.OverallRank, fixtureWinner.TypeRank),
 			fixtureWinner.Player.Cost,
 			fixtureWinner.OpposingTeam.Name,
 		)
