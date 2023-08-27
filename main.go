@@ -219,7 +219,7 @@ func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer) {
 			fixtureWinner.Player.Type.ShortName,
 			playerName,
 			fixtureWinner.Player.Form,
-			fixtureWinner.Score(),
+			fmt.Sprintf("%.0f", fixtureWinner.Score()),
 			fixtureWinner.Player.Cost,
 			fixtureWinner.OpposingTeam.Name,
 		)
