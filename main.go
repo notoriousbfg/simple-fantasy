@@ -64,6 +64,13 @@ type BestTeam struct {
 	Forwards    []StartingPlayer
 }
 
+func (bt *BestTeam) PlayerCount() int {
+	return len(bt.Goalkeepers) +
+		len(bt.Defenders) +
+		len(bt.Midfielders) +
+		len(bt.Forwards)
+}
+
 func main() {
 	playerName := flag.String("player", "", "for specifying a player's name")
 	gameWeekInt := flag.Int("gameweek", 0, "for specifying the gameweek")
@@ -268,6 +275,22 @@ func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) 
 	differentialsTbl.Print()
 
 	fmt.Println()
+
+	playersToBuyNow := compareBestTeams(bestTeam, differentials)
+	if playersToBuyNow.PlayerCount() > 0 && gameweek.IsNext {
+		fmt.Println("Buy these players now!")
+		playersToBuyTbl := table.New("Type", "Name", "Form", "Score", "Picked", "Rank (Type)", "Cost", "Opponent")
+		playersToBuyTbl.
+			WithHeaderFormatter(headerFmt).
+			WithFirstColumnFormatter(columnFmt)
+		appendToTable(playersToBuyTbl, playersToBuyNow.Goalkeepers, true)
+		appendToTable(playersToBuyTbl, playersToBuyNow.Defenders, true)
+		appendToTable(playersToBuyTbl, playersToBuyNow.Midfielders, true)
+		appendToTable(playersToBuyTbl, playersToBuyNow.Forwards, true)
+		playersToBuyTbl.Print()
+	}
+
+	fmt.Println()
 }
 
 func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer, withPickedPercentage bool) {
@@ -333,4 +356,43 @@ func ordinalNumber(n int) string {
 	default:
 		return fmt.Sprintf("%dth", n)
 	}
+}
+
+// this is sloppy and slow, but i'll refine it later
+func compareBestTeams(a BestTeam, b BestTeam) BestTeam {
+	var bestTeam BestTeam
+
+	for _, aPlayer := range a.Goalkeepers {
+		for _, bPlayer := range b.Goalkeepers {
+			if aPlayer.Player.ID == bPlayer.Player.ID {
+				bestTeam.Goalkeepers = append(bestTeam.Goalkeepers, aPlayer)
+			}
+		}
+	}
+
+	for _, aPlayer := range a.Defenders {
+		for _, bPlayer := range b.Defenders {
+			if aPlayer.Player.ID == bPlayer.Player.ID {
+				bestTeam.Defenders = append(bestTeam.Defenders, aPlayer)
+			}
+		}
+	}
+
+	for _, aPlayer := range a.Midfielders {
+		for _, bPlayer := range b.Midfielders {
+			if aPlayer.Player.ID == bPlayer.Player.ID {
+				bestTeam.Midfielders = append(bestTeam.Midfielders, aPlayer)
+			}
+		}
+	}
+
+	for _, aPlayer := range a.Forwards {
+		for _, bPlayer := range b.Forwards {
+			if aPlayer.Player.ID == bPlayer.Player.ID {
+				bestTeam.Forwards = append(bestTeam.Forwards, aPlayer)
+			}
+		}
+	}
+
+	return bestTeam
 }

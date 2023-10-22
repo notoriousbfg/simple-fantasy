@@ -25,6 +25,7 @@ type apiEvent struct {
 	Name            string    `json:"name"`
 	Deadline        time.Time `json:"deadline_time"`
 	IsCurrent       bool      `json:"is_current"`
+	IsNext          bool      `json:"is_next"`
 	Finished        bool      `json:"finished"`
 	MostCaptainedID int       `json:"most_captained"`
 }
@@ -183,6 +184,7 @@ type Gameweek struct {
 	Name            string
 	Deadline        string
 	IsCurrent       bool
+	IsNext          bool
 	Finished        bool
 	MostCaptainedID PlayerID
 }
@@ -221,6 +223,7 @@ func BuildData() (*Data, error) {
 			Name:            apiEvent.Name,
 			Deadline:        apiEvent.Deadline.Format("02 Jan 15:04"),
 			IsCurrent:       apiEvent.IsCurrent,
+			IsNext:          apiEvent.IsNext,
 			Finished:        apiEvent.Finished,
 			MostCaptainedID: PlayerID(apiEvent.MostCaptainedID),
 		}
