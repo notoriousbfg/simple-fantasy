@@ -1,8 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
+	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"unicode"
@@ -26,6 +30,13 @@ func (sp StartingPlayer) Score() float32 {
 	chanceOfPlaying, ok := sp.Player.ChanceOfPlaying[sp.Fixture.Gameweek.ID]
 	if !ok {
 		chanceOfPlaying = 1
+	}
+
+	if sp.Fixture.DifficultyMajority == 0 {
+		return sp.Player.Form *
+			sp.Player.Stats.ICTIndex *
+			sp.Player.Stats.AverageStarts *
+			chanceOfPlaying
 	}
 
 	return sp.Player.Form *
@@ -71,9 +82,15 @@ func (bt *BestTeam) PlayerCount() int {
 		len(bt.Forwards)
 }
 
+type TeamConfig struct {
+	Players   []string `json:"players"`
+	BankValue float32  `json:"bank_value"`
+}
+
 func main() {
 	playerName := flag.String("player", "", "for specifying a player's name")
 	gameWeekInt := flag.Int("gameweek", 0, "for specifying the gameweek")
+	teamConfig := flag.String("config", "./team.json", "for specifying your current team config")
 	flag.Parse()
 
 	if *gameWeekInt == 0 {
@@ -100,6 +117,7 @@ func main() {
 
 	// set used in case multiple fixtures in one gameweek for a team
 	likelyWinnerPlayersSet := make(map[PlayerID]StartingPlayer, 0)
+
 	for _, fixture := range data.FixturesByGameWeek(*gameWeekInt) {
 		var likelyWinner Team
 		var opposingTeam Team
@@ -170,12 +188,106 @@ func main() {
 	}
 
 	differentials := differentialPlayers(rankedStartingPlayers)
-	bestTeam := createBestTeam(rankedStartingPlayers)
+	bestTeam := createHighestScoringTeam(rankedStartingPlayers)
+
+	if *teamConfig != "" {
+		configFilePath, err := filepath.Abs(*teamConfig)
+		if err != nil {
+			panic(err)
+		}
+		jsonFile, err := os.Open(configFilePath)
+		if err != nil {
+			panic(err)
+		}
+		byteValue, err := io.ReadAll(jsonFile)
+		if err != nil {
+			panic(err)
+		}
+		var config TeamConfig
+		err = json.Unmarshal(byteValue, &config)
+		if err != nil {
+			panic(err)
+		}
+
+		if len(config.Players) < 14 {
+			panic(fmt.Errorf("team config not valid: you only have %d players but need 14", len(config.Players)))
+		}
+
+		gameweekPlayers := make([]StartingPlayer, 0)
+		for _, fixture := range data.FixturesByGameWeek(*gameWeekInt) {
+			for _, player := range fixture.HomeTeam.Players {
+				gameweekPlayers = append(gameweekPlayers, StartingPlayer{
+					Player:       player,
+					Fixture:      fixture,
+					OpposingTeam: *fixture.AwayTeam,
+				})
+			}
+			for _, player := range fixture.AwayTeam.Players {
+				gameweekPlayers = append(gameweekPlayers, StartingPlayer{
+					Player:       player,
+					Fixture:      fixture,
+					OpposingTeam: *fixture.HomeTeam,
+				})
+			}
+		}
+
+		myGameweekPlayers := make([]StartingPlayer, 0)
+		for _, myPlayer := range config.Players {
+			for _, gameweekPlayer := range gameweekPlayers {
+				if myPlayer == gameweekPlayer.Player.Name {
+					myGameweekPlayers = append(myGameweekPlayers, gameweekPlayer)
+				}
+			}
+		}
+
+		myGameweekPlayers = sortStartingPlayersByScore(myGameweekPlayers)
+		// checking again for consistency
+		if len(myGameweekPlayers) < 14 {
+			panic(fmt.Errorf("team config not valid: you only have %d players but need 14", len(myGameweekPlayers)))
+		}
+
+		bestTeam := createHighestScoringTeam(myGameweekPlayers)
+		fmt.Printf("\nWith your current players, the best team you could pick for %s is:\n", gameweek.Name)
+		headerFmt, columnFmt := tableFormat()
+		tbl := table.New("Type", "Name", "Form", "Score", "Cost", "Opponent")
+		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		appendOptions := AppendOptions{withPickedPercentage: false}
+		appendToTable(tbl, bestTeam.Goalkeepers, appendOptions)
+		appendToTable(tbl, bestTeam.Defenders, appendOptions)
+		appendToTable(tbl, bestTeam.Midfielders, appendOptions)
+		appendToTable(tbl, bestTeam.Forwards, appendOptions)
+		tbl.Print()
+
+		playerToSell := myGameweekPlayers[13]
+		cashAfterSale := playerToSell.Player.RawCost + config.BankValue
+
+		playersICanAfford := make([]StartingPlayer, 0)
+		for _, potential := range gameweekPlayers {
+			if potential.Player.RawCost <= cashAfterSale && potential.Player.Type.ID == playerToSell.Player.Type.ID {
+				playersICanAfford = append(playersICanAfford, potential)
+			}
+		}
+
+		playersICanAfford = sortStartingPlayersByScore(playersICanAfford)
+		topPick := playersICanAfford[0]
+
+		fmt.Printf(
+			"\nYou might want to consider selling %s and buying %s, who costs %s and has a score of %.0f.\n\n",
+			playerToSell.Player.Name,
+			topPick.Player.Name,
+			topPick.Player.Cost,
+			topPick.Score(),
+		)
+
+		fmt.Printf("(Scores may vary where team expected to draw.)\n\n")
+
+		return
+	}
 
 	printOutput(bestTeam, differentials, gameweek)
 }
 
-func createBestTeam(startingPlayers []StartingPlayer) BestTeam {
+func createHighestScoringTeam(startingPlayers []StartingPlayer) BestTeam {
 	positionCountCombinations := [][]int{
 		{1, 3, 5, 2},
 		{1, 4, 4, 2},
@@ -247,9 +359,15 @@ func createBestTeam(startingPlayers []StartingPlayer) BestTeam {
 	return bestTeam
 }
 
-func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) {
+func tableFormat() (table.Formatter, table.Formatter) {
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
+	return headerFmt, columnFmt
+}
+
+func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) {
+	headerFmt, columnFmt := tableFormat()
+
 	tbl := table.New("Type", "Name", "Form", "Score", "Rank (Type)", "Cost", "Opponent")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 	if gameweek.IsCurrent {
@@ -257,10 +375,11 @@ func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) 
 	} else {
 		fmt.Printf("\nThe best team you can play in %s (deadline %s) is: \n", gameweek.Name, gameweek.Deadline)
 	}
-	appendToTable(tbl, bestTeam.Goalkeepers, false)
-	appendToTable(tbl, bestTeam.Defenders, false)
-	appendToTable(tbl, bestTeam.Midfielders, false)
-	appendToTable(tbl, bestTeam.Forwards, false)
+	appendOptions := AppendOptions{withPickedPercentage: false}
+	appendToTable(tbl, bestTeam.Goalkeepers, appendOptions)
+	appendToTable(tbl, bestTeam.Defenders, appendOptions)
+	appendToTable(tbl, bestTeam.Midfielders, appendOptions)
+	appendToTable(tbl, bestTeam.Forwards, appendOptions)
 	tbl.Print()
 
 	fmt.Printf("\nDifferentials:\n")
@@ -268,10 +387,11 @@ func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) 
 	differentialsTbl.
 		WithHeaderFormatter(headerFmt).
 		WithFirstColumnFormatter(columnFmt)
-	appendToTable(differentialsTbl, differentials.Goalkeepers, true)
-	appendToTable(differentialsTbl, differentials.Defenders, true)
-	appendToTable(differentialsTbl, differentials.Midfielders, true)
-	appendToTable(differentialsTbl, differentials.Forwards, true)
+	appendOptions = AppendOptions{withPickedPercentage: true}
+	appendToTable(differentialsTbl, differentials.Goalkeepers, appendOptions)
+	appendToTable(differentialsTbl, differentials.Defenders, appendOptions)
+	appendToTable(differentialsTbl, differentials.Midfielders, appendOptions)
+	appendToTable(differentialsTbl, differentials.Forwards, appendOptions)
 	differentialsTbl.Print()
 
 	fmt.Println()
@@ -283,17 +403,23 @@ func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) 
 		playersToBuyTbl.
 			WithHeaderFormatter(headerFmt).
 			WithFirstColumnFormatter(columnFmt)
-		appendToTable(playersToBuyTbl, playersToBuyNow.Goalkeepers, true)
-		appendToTable(playersToBuyTbl, playersToBuyNow.Defenders, true)
-		appendToTable(playersToBuyTbl, playersToBuyNow.Midfielders, true)
-		appendToTable(playersToBuyTbl, playersToBuyNow.Forwards, true)
+		appendOptions = AppendOptions{withPickedPercentage: true}
+		appendToTable(playersToBuyTbl, playersToBuyNow.Goalkeepers, appendOptions)
+		appendToTable(playersToBuyTbl, playersToBuyNow.Defenders, appendOptions)
+		appendToTable(playersToBuyTbl, playersToBuyNow.Midfielders, appendOptions)
+		appendToTable(playersToBuyTbl, playersToBuyNow.Forwards, appendOptions)
 		playersToBuyTbl.Print()
 	}
 
 	fmt.Println()
 }
 
-func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer, withPickedPercentage bool) {
+type AppendOptions struct {
+	withPickedPercentage bool
+	withRank             bool
+}
+
+func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer, options AppendOptions) {
 	for _, fixtureWinner := range fixtureWinners {
 		playerName := fixtureWinner.Player.Name
 
@@ -308,12 +434,15 @@ func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer, withPickedP
 			fmt.Sprintf("%.0f", fixtureWinner.Score()),
 		}
 
-		if withPickedPercentage {
+		if options.withPickedPercentage {
 			row = append(row, fmt.Sprintf("%.0f%%", fixtureWinner.Player.PickedPercentage))
 		}
 
+		if options.withRank {
+			row = append(row, fmt.Sprintf("%s (%s)", fixtureWinner.OverallRank, fixtureWinner.TypeRank))
+		}
+
 		row = append(row, []interface{}{
-			fmt.Sprintf("%s (%s)", fixtureWinner.OverallRank, fixtureWinner.TypeRank),
 			fixtureWinner.Player.Cost,
 			fixtureWinner.OpposingTeam.Name,
 		}...)
@@ -338,7 +467,7 @@ func differentialPlayers(startingPlayers []StartingPlayer) BestTeam {
 			players = append(players, startingPlayer)
 		}
 	}
-	return createBestTeam(players)
+	return createHighestScoringTeam(players)
 }
 
 func ordinalNumber(n int) string {

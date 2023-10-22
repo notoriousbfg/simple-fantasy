@@ -13,5 +13,19 @@ e.g.
 
 ### Usage
 ```
-./simple-fantasy -gameweek 10 -player Solanke
+./simple-fantasy -gameweek 10
 ```
+
+#### Player Detail
+```
+./simple-fantasy -gameweek 10 -player Haaland
+```
+
+#### Config Option
+```
+./simple-fantasy -gameweek 10 -config ./team.json
+```
+Create a file in the structure of the one in this repo that represents your current team. The script will tell you what the best team you should play for the gameweek and suggest a replacement for your lowest performing player. Note: Accents and cases must be correct for player surnames.
+
+<img src="./img2.png" />
+

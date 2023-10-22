@@ -72,6 +72,7 @@ type apiStats struct {
 }
 
 type apiFixture struct {
+	ID                 int `json:"id"`
 	AwayTeamID         int `json:"team_a"`
 	HomeTeamID         int `json:"team_h"`
 	EventID            int `json:"event"`
@@ -86,6 +87,7 @@ type Data struct {
 	Gameweeks   []Gameweek
 	Fixtures    []*Fixture
 	Teams       []*Team
+	Players     []Player
 }
 
 func (d *Data) FixturesByGameWeek(gameweek int) []Fixture {
@@ -160,6 +162,7 @@ type Player struct {
 	Name             string
 	Form             float32
 	Cost             string
+	RawCost          float32
 	Team             *Team
 	Type             PlayerType
 	Stats            PlayerStats
@@ -189,13 +192,23 @@ type Gameweek struct {
 	MostCaptainedID PlayerID
 }
 
+type FixtureID int
+
 type Fixture struct {
+	ID                 FixtureID
 	Gameweek           *Gameweek
 	HomeTeam           *Team
 	AwayTeam           *Team
 	HomeTeamDifficulty int
 	AwayTeamDifficulty int
 	DifficultyMajority int
+}
+
+func (f *Fixture) Players() []Player {
+	players := make([]Player, 0)
+	players = append(players, f.HomeTeam.Players...)
+	players = append(players, f.AwayTeam.Players...)
+	return players
 }
 
 func BuildData() (*Data, error) {
@@ -261,6 +274,7 @@ func BuildData() (*Data, error) {
 	}
 
 	teamPlayersByID := make(map[TeamID][]Player, 0)
+	allPlayers := make([]Player, 0)
 	for _, apiPlayer := range statsResp.Elements {
 		playerForm, err := strconv.ParseFloat(apiPlayer.Form, 32)
 		if err != nil {
@@ -309,12 +323,13 @@ func BuildData() (*Data, error) {
 		}
 
 		newPlayer := Player{
-			ID:   PlayerID(apiPlayer.ID),
-			Name: apiPlayer.Name,
-			Form: float32(playerForm),
-			Cost: formattedCost,
-			Team: playerTeam,
-			Type: playerType,
+			ID:      PlayerID(apiPlayer.ID),
+			Name:    apiPlayer.Name,
+			Form:    float32(playerForm),
+			Cost:    formattedCost,
+			RawCost: float32(apiPlayer.Cost) / float32(10),
+			Team:    playerTeam,
+			Type:    playerType,
 			Stats: PlayerStats{
 				Minutes:       apiPlayer.Minutes,
 				Goals:         apiPlayer.Goals,
@@ -336,7 +351,10 @@ func BuildData() (*Data, error) {
 			teamPlayersByID[TeamID(newPlayer.Team.ID)],
 			newPlayer,
 		)
+		allPlayers = append(allPlayers, newPlayer)
 	}
+
+	data.Players = allPlayers
 
 	for _, team := range teams {
 		team.Players = teamPlayersByID[team.ID]
@@ -363,6 +381,7 @@ func BuildData() (*Data, error) {
 		}
 
 		newFixture := Fixture{
+			ID:                 FixtureID(apiFixture.ID),
 			Gameweek:           gameweek,
 			HomeTeam:           homeTeam,
 			AwayTeam:           awayTeam,
