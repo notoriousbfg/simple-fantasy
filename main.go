@@ -31,6 +31,7 @@ func (sp StartingPlayer) Score() float32 {
 	return sp.Player.Form *
 		sp.Player.Stats.ICTIndex *
 		float32(sp.Fixture.DifficultyMajority) *
+		sp.Player.Stats.AverageStarts *
 		chanceOfPlaying
 }
 
