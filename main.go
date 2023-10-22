@@ -364,7 +364,7 @@ func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) 
 	} else {
 		fmt.Printf("\nThe best team you can play in %s (deadline %s) is: \n", gameweek.Name, gameweek.Deadline)
 	}
-	appendOptions := AppendOptions{withPickedPercentage: false}
+	appendOptions := AppendOptions{withPickedPercentage: false, withRank: true}
 	appendToTable(tbl, bestTeam.Goalkeepers, appendOptions)
 	appendToTable(tbl, bestTeam.Defenders, appendOptions)
 	appendToTable(tbl, bestTeam.Midfielders, appendOptions)
@@ -376,7 +376,7 @@ func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) 
 	differentialsTbl.
 		WithHeaderFormatter(headerFmt).
 		WithFirstColumnFormatter(columnFmt)
-	appendOptions = AppendOptions{withPickedPercentage: true}
+	appendOptions = AppendOptions{withPickedPercentage: true, withRank: true}
 	appendToTable(differentialsTbl, differentials.Goalkeepers, appendOptions)
 	appendToTable(differentialsTbl, differentials.Defenders, appendOptions)
 	appendToTable(differentialsTbl, differentials.Midfielders, appendOptions)
@@ -392,7 +392,7 @@ func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) 
 		playersToBuyTbl.
 			WithHeaderFormatter(headerFmt).
 			WithFirstColumnFormatter(columnFmt)
-		appendOptions = AppendOptions{withPickedPercentage: true}
+		appendOptions = AppendOptions{withPickedPercentage: true, withRank: true}
 		appendToTable(playersToBuyTbl, playersToBuyNow.Goalkeepers, appendOptions)
 		appendToTable(playersToBuyTbl, playersToBuyNow.Defenders, appendOptions)
 		appendToTable(playersToBuyTbl, playersToBuyNow.Midfielders, appendOptions)
