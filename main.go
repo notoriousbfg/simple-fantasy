@@ -90,7 +90,7 @@ type TeamConfig struct {
 func main() {
 	playerName := flag.String("player", "", "for specifying a player's name")
 	gameWeekInt := flag.Int("gameweek", 0, "for specifying the gameweek")
-	teamConfig := flag.String("config", "./team.json", "for specifying your current team config")
+	teamConfig := flag.String("config", "", "for specifying your current team config")
 	flag.Parse()
 
 	if *gameWeekInt == 0 {
