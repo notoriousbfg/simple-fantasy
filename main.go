@@ -1,10 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"unicode"
 
@@ -65,21 +64,12 @@ type bestTeam struct {
 }
 
 func main() {
-	args := os.Args[1:]
+	playerName := flag.String("player", "", "for specifying a player's name")
+	gameWeekInt := flag.Int("gameweek", 0, "for specifying the gameweek")
+	flag.Parse()
 
-	if len(args) == 0 {
+	if *gameWeekInt == 0 {
 		panic("You must provide a gameweek number")
-	}
-
-	chosenGameweek := args[0]
-	gameWeekInt, err := strconv.Atoi(chosenGameweek)
-	if err != nil {
-		panic(err)
-	}
-
-	var playerName string
-	if len(args) > 1 {
-		playerName = args[1]
 	}
 
 	data, err := BuildData()
@@ -88,9 +78,12 @@ func main() {
 	}
 
 	var gameweek *Gameweek
-
-	if gameWeekInt > 0 {
-		gameweek = data.Gameweek(gameWeekInt)
+	if *gameWeekInt > 0 {
+		gameweek = data.Gameweek(*gameWeekInt)
+		if gameweek.Finished {
+			fmt.Printf("\n%s is finished\n\n", gameweek.Name)
+			return
+		}
 	} else {
 		gameweek = data.CurrentGameweek()
 	}
@@ -99,7 +92,7 @@ func main() {
 
 	// set used in case multiple fixtures in one gameweek for a team
 	likelyWinnerPlayersSet := make(map[PlayerID]StartingPlayer, 0)
-	for _, fixture := range data.FixturesByGameWeek(gameWeekInt) {
+	for _, fixture := range data.FixturesByGameWeek(*gameWeekInt) {
 		var likelyWinner Team
 		var opposingTeam Team
 		if fixture.HomeTeamDifficulty < fixture.AwayTeamDifficulty {
@@ -128,7 +121,7 @@ func main() {
 		likelyWinnerPlayers = append(likelyWinnerPlayers, player)
 	}
 
-	sortStartingPlayers(likelyWinnerPlayers)
+	likelyWinnerPlayers = sortStartingPlayersByScore(likelyWinnerPlayers)
 
 	rankedStartingPlayers := make([]StartingPlayer, 0)
 
@@ -144,19 +137,21 @@ func main() {
 		rankedStartingPlayers = append(rankedStartingPlayers, player)
 	}
 
-	if playerName != "" {
+	differentials := differentialPlayers(rankedStartingPlayers)
+
+	if *playerName != "" {
 		var matchingPlayer StartingPlayer
 		t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
 		for _, player := range rankedStartingPlayers {
 			// this is probably pretty sloppy
 			result, _, _ := transform.String(t, player.Player.Name)
-			if playerName == result {
+			if *playerName == result {
 				matchingPlayer = player
 				break
 			}
 		}
 		if matchingPlayer.Player.Name == "" {
-			fmt.Printf("player '%s' not found or is not a probable winner for this gameweek\n", playerName)
+			fmt.Printf("player '%s' not found or is not a probable winner for this gameweek\n", *playerName)
 			return
 		}
 		fmt.Printf("Player: %s, Type: %s\n", matchingPlayer.Player.Name, matchingPlayer.Player.Type.Name)
@@ -167,6 +162,10 @@ func main() {
 		fmt.Printf("Opposition: %s\n", matchingPlayer.OpposingTeam.Name)
 		return
 	}
+
+	// for _, player := range rankedStartingPlayers[:30] {
+	// 	fmt.Printf("%s, %s, %f\n", player.Player.Name, player.TypeRank, player.Score())
+	// }
 
 	positionCountCombinations := [][]int{
 		{1, 3, 5, 2},
@@ -236,10 +235,10 @@ func main() {
 	bestTeam.Midfielders = highestScoringTeam["Midfielder"]
 	bestTeam.Forwards = highestScoringTeam["Forward"]
 
-	printOutput(bestTeam, gameweek)
+	printOutput(bestTeam, differentials, gameweek)
 }
 
-func printOutput(bestTeam bestTeam, gameweek *Gameweek) {
+func printOutput(bestTeam bestTeam, differentials []StartingPlayer, gameweek *Gameweek) {
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 	tbl := table.New("Type", "Name", "Form", "Score", "Rank (Type)", "Cost", "Opponent")
@@ -249,14 +248,25 @@ func printOutput(bestTeam bestTeam, gameweek *Gameweek) {
 	} else {
 		fmt.Printf("\nThe best team you can play in %s (deadline %s) is: \n", gameweek.Name, gameweek.Deadline)
 	}
-	appendToTable(tbl, bestTeam.Goalkeepers)
-	appendToTable(tbl, bestTeam.Defenders)
-	appendToTable(tbl, bestTeam.Midfielders)
-	appendToTable(tbl, bestTeam.Forwards)
+	appendToTable(tbl, bestTeam.Goalkeepers, false)
+	appendToTable(tbl, bestTeam.Defenders, false)
+	appendToTable(tbl, bestTeam.Midfielders, false)
+	appendToTable(tbl, bestTeam.Forwards, false)
 	tbl.Print()
+
+	if len(differentials) > 0 {
+		fmt.Printf("\nDifferentials:\n")
+		differentialsTbl := table.New("Type", "Name", "Form", "Score", "Picked", "Rank (Type)", "Cost", "Opponent")
+		differentialsTbl.
+			WithHeaderFormatter(headerFmt).
+			WithFirstColumnFormatter(columnFmt)
+		appendToTable(differentialsTbl, differentials, true)
+		differentialsTbl.Print()
+		fmt.Println()
+	}
 }
 
-func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer) {
+func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer, withPickedPercentage bool) {
 	for _, fixtureWinner := range fixtureWinners {
 		playerName := fixtureWinner.Player.Name
 
@@ -264,22 +274,53 @@ func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer) {
 			playerName += " (C)"
 		}
 
-		tbl.AddRow(
+		row := []interface{}{
 			fixtureWinner.Player.Type.ShortName,
 			playerName,
 			fixtureWinner.Player.Form,
 			fmt.Sprintf("%.0f", fixtureWinner.Score()),
+		}
+
+		if withPickedPercentage {
+			row = append(row, fmt.Sprintf("%.0f%%", fixtureWinner.Player.PickedPercentage))
+		}
+
+		row = append(row, []interface{}{
 			fmt.Sprintf("%s (%s)", fixtureWinner.OverallRank, fixtureWinner.TypeRank),
 			fixtureWinner.Player.Cost,
 			fixtureWinner.OpposingTeam.Name,
-		)
+		}...)
+
+		tbl.AddRow(row...)
 	}
 }
 
-func sortStartingPlayers(startingPlayers []StartingPlayer) {
-	sort.Slice(startingPlayers, func(i, j int) bool {
-		return startingPlayers[i].Score() > startingPlayers[j].Score()
+func sortStartingPlayersByScore(startingPlayers []StartingPlayer) []StartingPlayer {
+	newSlice := make([]StartingPlayer, len(startingPlayers))
+	copy(newSlice, startingPlayers)
+	sort.Slice(newSlice, func(i, j int) bool {
+		return newSlice[i].Score() > newSlice[j].Score()
 	})
+	return newSlice
+}
+
+func differentialPlayers(startingPlayers []StartingPlayer) []StartingPlayer {
+	players := make([]StartingPlayer, 0)
+	for _, startingPlayer := range startingPlayers {
+		if startingPlayer.Player.PickedPercentage < 15 {
+			players = append(players, startingPlayer)
+		}
+	}
+	teamCounts := make(map[TeamID]int, 0)
+	selection := make([]StartingPlayer, 0)
+	for _, player := range players {
+		if teamCounts[player.Player.Team.ID] >= 3 {
+			continue
+		}
+		selection = append(selection, player)
+		teamCounts[player.Player.Team.ID]++
+	}
+	return sliceOrAllOfPlayers(selection, 11)
 }
 
 func ordinalNumber(n int) string {
@@ -296,5 +337,13 @@ func ordinalNumber(n int) string {
 		return fmt.Sprintf("%drd", n)
 	default:
 		return fmt.Sprintf("%dth", n)
+	}
+}
+
+func sliceOrAllOfPlayers(players []StartingPlayer, length int) []StartingPlayer {
+	if len(players) >= length {
+		return players[:length]
+	} else {
+		return players
 	}
 }

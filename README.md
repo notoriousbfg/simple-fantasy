@@ -9,3 +9,8 @@ A very crude tool that lists the "perfect team" for a Premier League fantasy gam
 e.g.
 
 <img src="./img.png" />
+
+### Usage
+```
+./simple-fantasy -gameweek 10 -player Solanke
+```

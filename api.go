@@ -25,6 +25,7 @@ type apiEvent struct {
 	Name            string    `json:"name"`
 	Deadline        time.Time `json:"deadline_time"`
 	IsCurrent       bool      `json:"is_current"`
+	Finished        bool      `json:"finished"`
 	MostCaptainedID int       `json:"most_captained"`
 }
 
@@ -49,6 +50,7 @@ type apiElement struct {
 	News                     string  `json:"news"`
 	ChanceOfPlayingThisRound *int    `json:"chance_of_playing_this_round"`
 	ChanceOfPlayingNextRound *int    `json:"chance_of_playing_next_round"`
+	SelectedByPercent        string  `json:"selected_by_percent"`
 }
 
 type apiElementType struct {
@@ -153,15 +155,16 @@ type PlayerRoundProbability map[GameweekID]float32
 type PlayerID int
 
 type Player struct {
-	ID              PlayerID
-	Name            string
-	Form            float32
-	Cost            string
-	Team            *Team
-	Type            PlayerType
-	Stats           PlayerStats
-	ChanceOfPlaying PlayerRoundProbability
-	MostCaptained   bool
+	ID               PlayerID
+	Name             string
+	Form             float32
+	Cost             string
+	Team             *Team
+	Type             PlayerType
+	Stats            PlayerStats
+	ChanceOfPlaying  PlayerRoundProbability
+	MostCaptained    bool
+	PickedPercentage float32
 }
 
 type TeamID int
@@ -180,6 +183,7 @@ type Gameweek struct {
 	Name            string
 	Deadline        string
 	IsCurrent       bool
+	Finished        bool
 	MostCaptainedID PlayerID
 }
 
@@ -217,6 +221,7 @@ func BuildData() (*Data, error) {
 			Name:            apiEvent.Name,
 			Deadline:        apiEvent.Deadline.Format("02 Jan 15:04"),
 			IsCurrent:       apiEvent.IsCurrent,
+			Finished:        apiEvent.Finished,
 			MostCaptainedID: PlayerID(apiEvent.MostCaptainedID),
 		}
 		gameweeksByID[gameweekID] = gameweek
@@ -295,6 +300,11 @@ func BuildData() (*Data, error) {
 			currentGameweekID + 1: chanceOfPlayingNextRound, // assumes next round is gameweek ID + 1
 		}
 
+		pickedPercentage, err := strconv.ParseFloat(apiPlayer.SelectedByPercent, 32)
+		if err != nil {
+			return &Data{}, err
+		}
+
 		newPlayer := Player{
 			ID:   PlayerID(apiPlayer.ID),
 			Name: apiPlayer.Name,
@@ -315,7 +325,8 @@ func BuildData() (*Data, error) {
 				ICTIndex:      float32(ictIndex),
 				ICTIndexRank:  apiPlayer.ICTIndexRank,
 			},
-			ChanceOfPlaying: chanceOfPlaying,
+			ChanceOfPlaying:  chanceOfPlaying,
+			PickedPercentage: float32(pickedPercentage),
 		}
 
 		teamPlayersByID[newPlayer.Team.ID] = append(
