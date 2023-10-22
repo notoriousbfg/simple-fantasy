@@ -57,7 +57,7 @@ func (se StartingEleven) Score() float32 {
 	return score
 }
 
-type bestTeam struct {
+type BestTeam struct {
 	Goalkeepers []StartingPlayer
 	Defenders   []StartingPlayer
 	Midfielders []StartingPlayer
@@ -138,8 +138,6 @@ func main() {
 		rankedStartingPlayers = append(rankedStartingPlayers, player)
 	}
 
-	differentials := differentialPlayers(rankedStartingPlayers)
-
 	if *playerName != "" {
 		var matchingPlayer StartingPlayer
 		t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
@@ -164,10 +162,13 @@ func main() {
 		return
 	}
 
-	// for _, player := range rankedStartingPlayers[:30] {
-	// 	fmt.Printf("%s, %s, %f\n", player.Player.Name, player.TypeRank, player.Score())
-	// }
+	differentials := differentialPlayers(rankedStartingPlayers)
+	bestTeam := createBestTeam(rankedStartingPlayers)
 
+	printOutput(bestTeam, differentials, gameweek)
+}
+
+func createBestTeam(startingPlayers []StartingPlayer) BestTeam {
 	positionCountCombinations := [][]int{
 		{1, 3, 5, 2},
 		{1, 4, 4, 2},
@@ -186,7 +187,7 @@ func main() {
 		teamPlayerCounts := make(map[TeamID]int, 0)
 
 		// assumes players are in descending score order
-		for _, player := range rankedStartingPlayers {
+		for _, player := range startingPlayers {
 			// you can only have 3 players from one team in your selection, continue to next ranking player
 			if teamPlayerCounts[player.Player.Team.ID] >= 3 {
 				continue
@@ -230,16 +231,16 @@ func main() {
 		}
 	}
 
-	var bestTeam bestTeam
+	var bestTeam BestTeam
 	bestTeam.Goalkeepers = highestScoringTeam["Goalkeeper"]
 	bestTeam.Defenders = highestScoringTeam["Defender"]
 	bestTeam.Midfielders = highestScoringTeam["Midfielder"]
 	bestTeam.Forwards = highestScoringTeam["Forward"]
 
-	printOutput(bestTeam, differentials, gameweek)
+	return bestTeam
 }
 
-func printOutput(bestTeam bestTeam, differentials []StartingPlayer, gameweek *Gameweek) {
+func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) {
 	headerFmt := color.New(color.FgGreen, color.Underline).SprintfFunc()
 	columnFmt := color.New(color.FgYellow).SprintfFunc()
 	tbl := table.New("Type", "Name", "Form", "Score", "Rank (Type)", "Cost", "Opponent")
@@ -255,16 +256,18 @@ func printOutput(bestTeam bestTeam, differentials []StartingPlayer, gameweek *Ga
 	appendToTable(tbl, bestTeam.Forwards, false)
 	tbl.Print()
 
-	if len(differentials) > 0 {
-		fmt.Printf("\nDifferentials:\n")
-		differentialsTbl := table.New("Type", "Name", "Form", "Score", "Picked", "Rank (Type)", "Cost", "Opponent")
-		differentialsTbl.
-			WithHeaderFormatter(headerFmt).
-			WithFirstColumnFormatter(columnFmt)
-		appendToTable(differentialsTbl, differentials, true)
-		differentialsTbl.Print()
-		fmt.Println()
-	}
+	fmt.Printf("\nDifferentials:\n")
+	differentialsTbl := table.New("Type", "Name", "Form", "Score", "Picked", "Rank (Type)", "Cost", "Opponent")
+	differentialsTbl.
+		WithHeaderFormatter(headerFmt).
+		WithFirstColumnFormatter(columnFmt)
+	appendToTable(differentialsTbl, differentials.Goalkeepers, true)
+	appendToTable(differentialsTbl, differentials.Defenders, true)
+	appendToTable(differentialsTbl, differentials.Midfielders, true)
+	appendToTable(differentialsTbl, differentials.Forwards, true)
+	differentialsTbl.Print()
+
+	fmt.Println()
 }
 
 func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer, withPickedPercentage bool) {
@@ -305,23 +308,14 @@ func sortStartingPlayersByScore(startingPlayers []StartingPlayer) []StartingPlay
 	return newSlice
 }
 
-func differentialPlayers(startingPlayers []StartingPlayer) []StartingPlayer {
+func differentialPlayers(startingPlayers []StartingPlayer) BestTeam {
 	players := make([]StartingPlayer, 0)
 	for _, startingPlayer := range startingPlayers {
 		if startingPlayer.Player.PickedPercentage < 15 {
 			players = append(players, startingPlayer)
 		}
 	}
-	teamCounts := make(map[TeamID]int, 0)
-	selection := make([]StartingPlayer, 0)
-	for _, player := range players {
-		if teamCounts[player.Player.Team.ID] >= 3 {
-			continue
-		}
-		selection = append(selection, player)
-		teamCounts[player.Player.Team.ID]++
-	}
-	return sliceOrAllOfPlayers(selection, 11)
+	return createBestTeam(players)
 }
 
 func ordinalNumber(n int) string {
@@ -338,13 +332,5 @@ func ordinalNumber(n int) string {
 		return fmt.Sprintf("%drd", n)
 	default:
 		return fmt.Sprintf("%dth", n)
-	}
-}
-
-func sliceOrAllOfPlayers(players []StartingPlayer, length int) []StartingPlayer {
-	if len(players) >= length {
-		return players[:length]
-	} else {
-		return players
 	}
 }
