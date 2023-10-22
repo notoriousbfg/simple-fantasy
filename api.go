@@ -127,6 +127,27 @@ func (d *Data) PlayerType(pt string) *PlayerType {
 	return nil
 }
 
+func (d *Data) GameweekPlayers(gameweek int) []StartingPlayer {
+	gameweekPlayers := make([]StartingPlayer, 0)
+	for _, fixture := range d.FixturesByGameWeek(gameweek) {
+		for _, player := range fixture.HomeTeam.Players {
+			gameweekPlayers = append(gameweekPlayers, StartingPlayer{
+				Player:       player,
+				Fixture:      fixture,
+				OpposingTeam: *fixture.AwayTeam,
+			})
+		}
+		for _, player := range fixture.AwayTeam.Players {
+			gameweekPlayers = append(gameweekPlayers, StartingPlayer{
+				Player:       player,
+				Fixture:      fixture,
+				OpposingTeam: *fixture.HomeTeam,
+			})
+		}
+	}
+	return gameweekPlayers
+}
+
 type PlayerTypeID int
 
 type PlayerType struct {

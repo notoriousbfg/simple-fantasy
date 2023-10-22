@@ -147,26 +147,13 @@ func main() {
 		likelyWinnerPlayers = append(likelyWinnerPlayers, player)
 	}
 
-	likelyWinnerPlayers = sortStartingPlayersByScore(likelyWinnerPlayers)
-
-	rankedStartingPlayers := make([]StartingPlayer, 0)
-
-	overallRanking := 0
-	typeRankings := make(map[PlayerTypeID]int, 0)
-
-	for _, player := range likelyWinnerPlayers {
-		overallRanking++
-		typeRankings[player.Player.Type.ID]++
-
-		player.OverallRank = ordinalNumber(overallRanking)
-		player.TypeRank = ordinalNumber(typeRankings[player.Player.Type.ID])
-		rankedStartingPlayers = append(rankedStartingPlayers, player)
-	}
+	rankedStartingPlayers := rankPlayers(likelyWinnerPlayers)
 
 	if *playerName != "" {
 		var matchingPlayer StartingPlayer
 		t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
-		for _, player := range rankedStartingPlayers {
+		players := rankPlayers(data.GameweekPlayers(*gameWeekInt))
+		for _, player := range players {
 			// this is probably pretty sloppy
 			result, _, _ := transform.String(t, player.Player.Name)
 			if *playerName == result {
@@ -175,7 +162,7 @@ func main() {
 			}
 		}
 		if matchingPlayer.Player.Name == "" {
-			fmt.Printf("player '%s' not found or is not a probable winner for this gameweek\n", *playerName)
+			fmt.Printf("player '%s' not found\n", *playerName)
 			return
 		}
 		fmt.Printf("Player: %s, Type: %s\n", matchingPlayer.Player.Name, matchingPlayer.Player.Type.Name)
@@ -213,23 +200,7 @@ func main() {
 			panic(fmt.Errorf("team config not valid: you only have %d players but need 14", len(config.Players)))
 		}
 
-		gameweekPlayers := make([]StartingPlayer, 0)
-		for _, fixture := range data.FixturesByGameWeek(*gameWeekInt) {
-			for _, player := range fixture.HomeTeam.Players {
-				gameweekPlayers = append(gameweekPlayers, StartingPlayer{
-					Player:       player,
-					Fixture:      fixture,
-					OpposingTeam: *fixture.AwayTeam,
-				})
-			}
-			for _, player := range fixture.AwayTeam.Players {
-				gameweekPlayers = append(gameweekPlayers, StartingPlayer{
-					Player:       player,
-					Fixture:      fixture,
-					OpposingTeam: *fixture.HomeTeam,
-				})
-			}
-		}
+		gameweekPlayers := data.GameweekPlayers(*gameWeekInt)
 
 		myGameweekPlayers := make([]StartingPlayer, 0)
 		for _, myPlayer := range config.Players {
@@ -249,9 +220,9 @@ func main() {
 		bestTeam := createHighestScoringTeam(myGameweekPlayers)
 		fmt.Printf("\nWith your current players, the best team you could pick for %s is:\n", gameweek.Name)
 		headerFmt, columnFmt := tableFormat()
-		tbl := table.New("Type", "Name", "Form", "Score", "Cost", "Opponent")
+		tbl := table.New("Type", "Name", "Form", "Score", "Picked", "Cost", "Opponent")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
-		appendOptions := AppendOptions{withPickedPercentage: false}
+		appendOptions := AppendOptions{withPickedPercentage: true}
 		appendToTable(tbl, bestTeam.Goalkeepers, appendOptions)
 		appendToTable(tbl, bestTeam.Defenders, appendOptions)
 		appendToTable(tbl, bestTeam.Midfielders, appendOptions)
@@ -285,6 +256,24 @@ func main() {
 	}
 
 	printOutput(bestTeam, differentials, gameweek)
+}
+
+func rankPlayers(players []StartingPlayer) []StartingPlayer {
+	players = sortStartingPlayersByScore(players)
+	rankedPlayers := make([]StartingPlayer, 0)
+	overallRanking := 0
+	typeRankings := make(map[PlayerTypeID]int, 0)
+
+	for _, player := range players {
+		overallRanking++
+		typeRankings[player.Player.Type.ID]++
+
+		player.OverallRank = ordinalNumber(overallRanking)
+		player.TypeRank = ordinalNumber(typeRankings[player.Player.Type.ID])
+		rankedPlayers = append(rankedPlayers, player)
+	}
+
+	return rankedPlayers
 }
 
 func createHighestScoringTeam(startingPlayers []StartingPlayer) BestTeam {
