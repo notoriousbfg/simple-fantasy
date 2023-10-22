@@ -229,12 +229,12 @@ func main() {
 		appendToTable(tbl, bestTeam.Forwards, appendOptions)
 		tbl.Print()
 
-		playerToSell := myGameweekPlayers[13]
-		cashAfterSale := playerToSell.Player.RawCost + config.BankValue
+		worstPlayer := myGameweekPlayers[13]
+		cashAfterSale := worstPlayer.Player.RawCost + config.BankValue
 
 		playersICanAfford := make([]StartingPlayer, 0)
 		for _, potential := range gameweekPlayers {
-			if potential.Player.RawCost <= cashAfterSale && potential.Player.Type.ID == playerToSell.Player.Type.ID {
+			if potential.Player.RawCost <= cashAfterSale && potential.Player.Type.ID == worstPlayer.Player.Type.ID {
 				playersICanAfford = append(playersICanAfford, potential)
 			}
 		}
@@ -244,11 +244,66 @@ func main() {
 
 		fmt.Printf(
 			"\nYou might want to consider selling %s and buying %s, who costs %s and has a score of %.0f.\n\n",
-			playerToSell.Player.Name,
+			worstPlayer.Player.Name,
 			topPick.Player.Name,
 			topPick.Player.Cost,
 			topPick.Score(),
 		)
+
+		fmt.Printf("Type './simple-fantasy -gameweek %d -player %s' to find out more about him.\n\n", *gameWeekInt, topPick.Player.Name)
+
+		// what could 2 transfers get you?
+		secondWorstPlayer := myGameweekPlayers[12]
+		cashAfterSale = worstPlayer.Player.RawCost + secondWorstPlayer.Player.RawCost + config.BankValue
+		scoresAndPlayers := make(map[float32][]StartingPlayer, 0)
+		sortedGameweekPlayers := sortStartingPlayersByScore(gameweekPlayers)
+		for _, potentialFirstTransfer := range gameweekPlayers {
+			if potentialFirstTransfer.Player.Type.ID != worstPlayer.Player.Type.ID && potentialFirstTransfer.Player.Type.ID != secondWorstPlayer.Player.Type.ID {
+				continue
+			}
+			cashNow := cashAfterSale - potentialFirstTransfer.Player.RawCost
+			var potentialSecondTransferType PlayerTypeID
+			if potentialFirstTransfer.Player.Type.ID == worstPlayer.Player.Type.ID {
+				potentialSecondTransferType = secondWorstPlayer.Player.Type.ID
+			} else if potentialFirstTransfer.Player.Type.ID == secondWorstPlayer.Player.Type.ID {
+				potentialSecondTransferType = worstPlayer.Player.Type.ID
+			}
+			for _, potentialSecondTransfer := range sortedGameweekPlayers {
+				if (cashNow-potentialSecondTransfer.Player.RawCost) >= 0 &&
+					potentialSecondTransfer.Player.ID != potentialFirstTransfer.Player.ID &&
+					potentialSecondTransfer.Player.Type.ID == potentialSecondTransferType {
+					combinedScore := potentialFirstTransfer.Score() + potentialSecondTransfer.Score()
+					scoresAndPlayers[combinedScore] = append(
+						scoresAndPlayers[combinedScore],
+						[]StartingPlayer{potentialFirstTransfer, potentialSecondTransfer}...,
+					)
+				}
+			}
+		}
+
+		scoreKeys := make([]float32, 0)
+		for key := range scoresAndPlayers {
+			scoreKeys = append(scoreKeys, key)
+		}
+		sort.Slice(scoreKeys, func(i, j int) bool {
+			return scoreKeys[i] > scoreKeys[j]
+		})
+		bestPair := scoresAndPlayers[scoreKeys[0]]
+		if len(bestPair) > 1 {
+			formattedCash := fmt.Sprintf("£%.1fm", float32(cashAfterSale))
+			fmt.Printf(
+				"Or if you were willing to make two transfers you could sell %s and %s for %s and buy %s and %s, costing %s and %s, with scores %.0f and %.0f.\n\n",
+				worstPlayer.Player.Name,
+				secondWorstPlayer.Player.Name,
+				formattedCash,
+				bestPair[0].Player.Name,
+				bestPair[1].Player.Name,
+				bestPair[0].Player.Cost,
+				bestPair[1].Player.Cost,
+				bestPair[0].Score(),
+				bestPair[1].Score(),
+			)
+		}
 
 		fmt.Printf("(Scores may vary where team expected to draw.)\n\n")
 
