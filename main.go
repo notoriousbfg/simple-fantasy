@@ -9,13 +9,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"unicode"
 
 	"github.com/fatih/color"
+	"github.com/lithammer/fuzzysearch/fuzzy"
 	"github.com/rodaine/table"
-	"golang.org/x/text/runes"
-	"golang.org/x/text/transform"
-	"golang.org/x/text/unicode/norm"
 )
 
 type StartingPlayer struct {
@@ -147,12 +144,9 @@ func main() {
 
 	if *playerName != "" {
 		var matchingPlayer StartingPlayer
-		t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
 		players := rankPlayers(data.GameweekPlayers(*gameWeekInt))
 		for _, player := range players {
-			// this is probably pretty sloppy
-			result, _, _ := transform.String(t, player.Player.Name)
-			if *playerName == result {
+			if fuzzy.Match(*playerName, player.Player.Name) {
 				matchingPlayer = player
 				break
 			}
