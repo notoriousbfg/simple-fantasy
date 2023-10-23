@@ -32,16 +32,12 @@ func (sp StartingPlayer) Score() float32 {
 		chanceOfPlaying = 1
 	}
 
-	if sp.Fixture.DifficultyMajority == 0 {
-		return sp.Player.Form *
-			sp.Player.Stats.ICTIndex *
-			sp.Player.Stats.AverageStarts *
-			chanceOfPlaying
-	}
+	// i'm thinking that this prevents multiplying by 0 and by 1 has no effect anyway
+	difficultyMajority := float32(sp.Fixture.DifficultyMajority + 1)
 
 	return sp.Player.Form *
 		sp.Player.Stats.ICTIndex *
-		float32(sp.Fixture.DifficultyMajority) *
+		difficultyMajority *
 		sp.Player.Stats.AverageStarts *
 		chanceOfPlaying
 }
@@ -196,7 +192,7 @@ func main() {
 			panic(err)
 		}
 
-		if len(config.Players) < 14 {
+		if len(config.Players) < 15 {
 			panic(fmt.Errorf("team config not valid: you only have %d players but need 14", len(config.Players)))
 		}
 
@@ -213,7 +209,7 @@ func main() {
 
 		myGameweekPlayers = sortStartingPlayersByScore(myGameweekPlayers)
 		// checking again for consistency
-		if len(myGameweekPlayers) < 14 {
+		if len(myGameweekPlayers) < 15 {
 			panic(fmt.Errorf("team config not valid: you only have %d players but need 14", len(myGameweekPlayers)))
 		}
 
@@ -229,7 +225,7 @@ func main() {
 		appendToTable(tbl, bestTeam.Forwards, appendOptions)
 		tbl.Print()
 
-		worstPlayer := myGameweekPlayers[13]
+		worstPlayer := myGameweekPlayers[14]
 		cashAfterSale := worstPlayer.Player.RawCost + config.BankValue
 
 		playersICanAfford := make([]StartingPlayer, 0)
@@ -253,7 +249,7 @@ func main() {
 		fmt.Printf("Type './simple-fantasy -gameweek %d -player %s' to find out more about him.\n\n", *gameWeekInt, topPick.Player.Name)
 
 		// what could 2 transfers get you?
-		secondWorstPlayer := myGameweekPlayers[12]
+		secondWorstPlayer := myGameweekPlayers[13]
 		cashAfterSale = worstPlayer.Player.RawCost + secondWorstPlayer.Player.RawCost + config.BankValue
 		scoresAndPlayers := make(map[float32][]StartingPlayer, 0)
 		sortedGameweekPlayers := sortStartingPlayersByScore(gameweekPlayers)
