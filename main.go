@@ -47,8 +47,7 @@ func (sp StartingPlayer) Score() float32 {
 		sp.Player.Stats.ICTIndex *
 		difficultyMajority *
 		sp.Player.Stats.AverageStarts *
-		chanceOfPlaying *
-		sp.WeightedPointsAverage()
+		chanceOfPlaying
 
 	cache[cacheKey] = score
 
