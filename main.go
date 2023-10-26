@@ -85,6 +85,10 @@ func (sp StartingPlayer) WeightedPointsAverage() float32 {
 		}
 	}
 
+	if similarFixturesPlayerPlayedIn == 0 {
+		return sp.Player.PointsPerGame
+	}
+
 	returnVal := float32(totalPoints) / float32(similarFixturesPlayerPlayedIn)
 
 	cache[cacheKey] = returnVal
@@ -135,6 +139,7 @@ type TeamConfig struct {
 
 func main() {
 	playerName := flag.String("player", "", "for specifying a player's name")
+	playerType := flag.String("type", "", "for viewing a list of top players of a type")
 	gameWeekInt := flag.Int("gameweek", 0, "for specifying the gameweek")
 	teamConfig := flag.String("config", "", "for specifying your current team config")
 	flag.Parse()
@@ -215,9 +220,31 @@ func main() {
 		fmt.Printf("Cost: %s\n", matchingPlayer.Player.Cost)
 		fmt.Printf("Form: %.2f\n", matchingPlayer.Player.Form)
 		fmt.Printf("Score: %.0f\n", matchingPlayer.Score())
-		fmt.Printf("Picked: %.0f%%\n", matchingPlayer.Player.PickedPercentage)
+		fmt.Printf("Picked: %.1f%%\n", matchingPlayer.Player.PickedPercentage)
 		fmt.Printf("Overall Rank: %s, by Type: %s\n", matchingPlayer.OverallRank, matchingPlayer.TypeRank)
 		fmt.Printf("Opposition: %s\n", matchingPlayer.OpposingTeam.Name)
+		return
+	}
+
+	if *playerType != "" {
+		players := rankPlayers(data.GameweekPlayers(*gameWeekInt))
+		playersWithThisType := make([]StartingPlayer, 0)
+		for _, player := range players {
+			if strings.EqualFold(player.Player.Type.ShortName, *playerType) ||
+				strings.EqualFold(player.Player.Type.Name, *playerType) ||
+				strings.EqualFold(player.Player.Type.PluralName, *playerType) {
+				playersWithThisType = append(playersWithThisType, player)
+			}
+		}
+		headerFmt, columnFmt := tableFormat()
+		tbl := table.New("Type", "Name", "Form", "PPG", "WPPG", "Score", "Picked", "Cost", "Opponent")
+		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
+		appendOptions := AppendOptions{withPickedPercentage: true}
+		appendToTable(tbl, playersWithThisType[:20], appendOptions)
+		fmt.Println()
+		fmt.Printf("The best players with the type '%s' this week are: \n", *playerType)
+		tbl.Print()
+		fmt.Println()
 		return
 	}
 
@@ -244,7 +271,7 @@ func main() {
 		}
 
 		if len(config.Players) < 15 {
-			panic(fmt.Errorf("team config not valid: you only have %d players but need 14", len(config.Players)))
+			panic(fmt.Errorf("team config not valid: you only have %d players but need 15", len(config.Players)))
 		}
 
 		gameweekPlayers := data.GameweekPlayers(*gameWeekInt)
@@ -261,13 +288,13 @@ func main() {
 		myGameweekPlayers = sortStartingPlayersByScore(myGameweekPlayers)
 		// checking again for consistency
 		if len(myGameweekPlayers) < 15 {
-			panic(fmt.Errorf("team config not valid: you only have %d players but need 14", len(myGameweekPlayers)))
+			panic(fmt.Errorf("team config not valid: you only have %d players but need 15", len(myGameweekPlayers)))
 		}
 
 		bestTeam := createHighestScoringTeam(myGameweekPlayers)
 		fmt.Printf("\nWith your current players, the best team you could pick for %s is:\n", gameweek.Name)
 		headerFmt, columnFmt := tableFormat()
-		tbl := table.New("Type", "Name", "Form", "Score", "Picked", "Cost", "Opponent")
+		tbl := table.New("Type", "Name", "Form", "PPG", "WPPG", "Score", "Picked", "Cost", "Opponent")
 		tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 		appendOptions := AppendOptions{withPickedPercentage: true}
 		appendToTable(tbl, bestTeam.Goalkeepers, appendOptions)
@@ -459,14 +486,14 @@ func tableFormat() (table.Formatter, table.Formatter) {
 func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) {
 	headerFmt, columnFmt := tableFormat()
 
-	tbl := table.New("Type", "Name", "Form", "PPG", "WPPG", "Score", "Rank (Type)", "Cost", "Opponent")
+	tbl := table.New("Type", "Name", "Form", "PPG", "WPPG", "Score", "Picked", "Rank (Type)", "Cost", "Opponent")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 	if gameweek.IsCurrent {
 		fmt.Printf("\nThe best team you could have played going into the current gameweek (deadline %s) was: \n", gameweek.Deadline)
 	} else {
 		fmt.Printf("\nThe best team you can play in %s (deadline %s) is: \n", gameweek.Name, gameweek.Deadline)
 	}
-	appendOptions := AppendOptions{withPickedPercentage: false, withRank: true}
+	appendOptions := AppendOptions{withPickedPercentage: true, withRank: true}
 	appendToTable(tbl, bestTeam.Goalkeepers, appendOptions)
 	appendToTable(tbl, bestTeam.Defenders, appendOptions)
 	appendToTable(tbl, bestTeam.Midfielders, appendOptions)
@@ -532,7 +559,7 @@ func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer, options App
 		}
 
 		if options.withPickedPercentage {
-			row = append(row, fmt.Sprintf("%.0f%%", fixtureWinner.Player.PickedPercentage))
+			row = append(row, fmt.Sprintf("%.1f%%", fixtureWinner.Player.PickedPercentage))
 		}
 
 		if options.withRank {
