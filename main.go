@@ -47,6 +47,7 @@ func (sp StartingPlayer) Score() float32 {
 		sp.Player.Stats.ICTIndex *
 		difficultyMajority *
 		sp.Player.Stats.AverageStarts *
+		sp.Player.PointsPerGame *
 		chanceOfPlaying
 
 	cache[cacheKey] = score
@@ -220,6 +221,8 @@ func main() {
 		fmt.Printf("Cost: %s\n", matchingPlayer.Player.Cost)
 		fmt.Printf("Form: %.2f\n", matchingPlayer.Player.Form)
 		fmt.Printf("Score: %.0f\n", matchingPlayer.Score())
+		fmt.Printf("PPG: %.2f\n", matchingPlayer.Player.PointsPerGame)
+		fmt.Printf("WPPG: %.2f\n", matchingPlayer.WeightedPointsAverage())
 		fmt.Printf("Picked: %.1f%%\n", matchingPlayer.Player.PickedPercentage)
 		fmt.Printf("Overall Rank: %s, by Type: %s\n", matchingPlayer.OverallRank, matchingPlayer.TypeRank)
 		fmt.Printf("Opposition: %s\n", matchingPlayer.OpposingTeam.Name)
