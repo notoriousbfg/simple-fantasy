@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	fixturesApi = "https://fantasy.premierleague.com/api/fixtures/"
-	statsApi    = "https://fantasy.premierleague.com/api/bootstrap-static/"
+	fixturesApi       = "https://fantasy.premierleague.com/api/fixtures/"
+	statsApi          = "https://fantasy.premierleague.com/api/bootstrap-static/"
+	playerFixturesApi = "https://fantasy.premierleague.com/api/element-summary/"
 )
 
 type apiTeam struct {
@@ -34,6 +35,8 @@ type apiElement struct {
 	ID                       int     `json:"id"`
 	Name                     string  `json:"web_name"`
 	Form                     string  `json:"form"`
+	PointsPerGame            string  `json:"points_per_game"`
+	TotalPoints              int     `json:"total_points"`
 	Cost                     int     `json:"now_cost"`
 	TypeID                   int     `json:"element_type"`
 	TeamID                   int     `json:"team"`
@@ -45,6 +48,7 @@ type apiElement struct {
 	YellowCards              int     `json:"yellow_cards"`
 	RedCards                 int     `json:"red_cards"`
 	Bonus                    int     `json:"bonus"`
+	Starts                   int     `json:"starts"`
 	StartsPerNinety          float32 `json:"starts_per_90"`
 	ICTIndex                 string  `json:"ict_index"`
 	ICTIndexRank             int     `json:"ict_index_rank"`
@@ -69,6 +73,21 @@ type apiStats struct {
 	Events       []apiEvent       `json:"events"`
 	Elements     []apiElement     `json:"elements"`
 	ElementTypes []apiElementType `json:"element_types"`
+}
+
+type apiPlayerFixturesAndHistory struct {
+	// Fixtures []apiPlayerFixture `json:"fixtures"`
+	History []apiPlayerHistory `json:"history"`
+}
+
+// type apiPlayerFixture struct {
+// }
+
+type apiPlayerHistory struct {
+	ElementID   int `json:"element"`
+	FixtureID   int `json:"fixture"`
+	Minutes     int `json:"minutes"`
+	TotalPoints int `json:"total_points"`
 }
 
 type apiFixture struct {
@@ -169,9 +188,16 @@ type PlayerStats struct {
 	YellowCards   int
 	RedCards      int
 	Bonus         int
+	Starts        int
 	AverageStarts float32
+	MatchesPlayed float32
 	ICTIndex      float32
 	ICTIndexRank  int
+}
+
+type PlayerHistory struct {
+	Fixture *Fixture
+	Minutes int
 }
 
 type PlayerRoundProbability map[GameweekID]float32
@@ -182,14 +208,25 @@ type Player struct {
 	ID               PlayerID
 	Name             string
 	Form             float32
+	PointsPerGame    float32
+	TotalPoints      int
 	Cost             string
 	RawCost          float32
 	Team             *Team
 	Type             PlayerType
 	Stats            PlayerStats
+	History          map[FixtureID]PlayerFixture
 	ChanceOfPlaying  PlayerRoundProbability
 	MostCaptained    bool
 	PickedPercentage float32
+}
+
+type PlayerFixture struct {
+	FixtureID FixtureID
+	PlayerID  PlayerID
+	Minutes   int
+	Played    bool
+	Points    int
 }
 
 type TeamID int
@@ -199,6 +236,7 @@ type Team struct {
 	Name      string
 	ShortName string
 	Players   []Player
+	Fixtures  []Fixture
 }
 
 type GameweekID int
@@ -302,6 +340,11 @@ func BuildData() (*Data, error) {
 			return &Data{}, err
 		}
 
+		playerPointsPerGame, err := strconv.ParseFloat(apiPlayer.PointsPerGame, 32)
+		if err != nil {
+			return &Data{}, err
+		}
+
 		playerTeam, ok := teamsByID[TeamID(apiPlayer.TeamID)]
 		if !ok {
 			return &Data{}, fmt.Errorf("missing team ID '%d'", apiPlayer.TeamID)
@@ -344,13 +387,15 @@ func BuildData() (*Data, error) {
 		}
 
 		newPlayer := Player{
-			ID:      PlayerID(apiPlayer.ID),
-			Name:    apiPlayer.Name,
-			Form:    float32(playerForm),
-			Cost:    formattedCost,
-			RawCost: float32(apiPlayer.Cost) / float32(10),
-			Team:    playerTeam,
-			Type:    playerType,
+			ID:            PlayerID(apiPlayer.ID),
+			Name:          apiPlayer.Name,
+			Form:          float32(playerForm),
+			PointsPerGame: float32(playerPointsPerGame),
+			TotalPoints:   apiPlayer.TotalPoints,
+			Cost:          formattedCost,
+			RawCost:       float32(apiPlayer.Cost) / float32(10),
+			Team:          playerTeam,
+			Type:          playerType,
 			Stats: PlayerStats{
 				Minutes:       apiPlayer.Minutes,
 				Goals:         apiPlayer.Goals,
@@ -360,6 +405,7 @@ func BuildData() (*Data, error) {
 				YellowCards:   apiPlayer.YellowCards,
 				RedCards:      apiPlayer.RedCards,
 				Bonus:         apiPlayer.Bonus,
+				Starts:        apiPlayer.Starts,
 				AverageStarts: apiPlayer.StartsPerNinety,
 				ICTIndex:      float32(ictIndex),
 				ICTIndexRank:  apiPlayer.ICTIndexRank,
@@ -411,10 +457,41 @@ func BuildData() (*Data, error) {
 			DifficultyMajority: abs(apiFixture.HomeTeamDifficulty - apiFixture.AwayTeamDifficulty),
 		}
 		fixtures = append(fixtures, &newFixture)
+
+		if team, ok := teamsByID[TeamID(apiFixture.HomeTeamID)]; ok {
+			team.Fixtures = append(team.Fixtures, newFixture)
+		}
+
+		if team, ok := teamsByID[TeamID(apiFixture.AwayTeamID)]; ok {
+			team.Fixtures = append(team.Fixtures, newFixture)
+		}
 	}
 	data.Fixtures = fixtures
 
 	return data, nil
+}
+
+func requestPlayerHistory(apiPlayerID int) (map[FixtureID]PlayerFixture, error) {
+	fixturesAndHistoryApiBody, err := getJsonBody(fmt.Sprintf("%s/%d", playerFixturesApi, apiPlayerID))
+	if err != nil {
+		return nil, err
+	}
+	var fixturesAndHistory apiPlayerFixturesAndHistory
+	if err := json.Unmarshal(fixturesAndHistoryApiBody, &fixturesAndHistory); err != nil {
+		return nil, err
+	}
+	fixturesToPlayerFixtures := make(map[FixtureID]PlayerFixture, 0)
+	for _, fixture := range fixturesAndHistory.History {
+		fixturesToPlayerFixtures[FixtureID(fixture.FixtureID)] = PlayerFixture{
+			FixtureID: FixtureID(fixture.FixtureID),
+			PlayerID:  PlayerID(fixture.ElementID),
+			Minutes:   fixture.Minutes,
+			Played:    fixture.Minutes > 0,
+			Points:    fixture.TotalPoints,
+		}
+	}
+
+	return fixturesToPlayerFixtures, nil
 }
 
 func getJsonBody(endpoint string) ([]byte, error) {

@@ -19,6 +19,8 @@ import (
 	"golang.org/x/text/unicode/norm"
 )
 
+var cache = make(map[string]interface{}, 0)
+
 type StartingPlayer struct {
 	Player       Player
 	Fixture      Fixture
@@ -28,6 +30,11 @@ type StartingPlayer struct {
 }
 
 func (sp StartingPlayer) Score() float32 {
+	cacheKey := fmt.Sprintf("score_player_%d", sp.Player.ID)
+	if val, exists := cache[cacheKey]; exists {
+		return val.(float32)
+	}
+
 	chanceOfPlaying, ok := sp.Player.ChanceOfPlaying[sp.Fixture.Gameweek.ID]
 	if !ok {
 		chanceOfPlaying = 1
@@ -36,11 +43,54 @@ func (sp StartingPlayer) Score() float32 {
 	// i'm thinking that this prevents multiplying by 0 and by 1 has no effect anyway
 	difficultyMajority := float32(sp.Fixture.DifficultyMajority + 1)
 
-	return sp.Player.Form *
+	score := sp.Player.Form *
 		sp.Player.Stats.ICTIndex *
 		difficultyMajority *
 		sp.Player.Stats.AverageStarts *
-		chanceOfPlaying
+		chanceOfPlaying *
+		sp.WeightedPointsAverage()
+
+	cache[cacheKey] = score
+
+	return score
+}
+
+func (sp StartingPlayer) WeightedPointsAverage() float32 {
+	cacheKey := fmt.Sprintf("wppg_player_%d", sp.Player.ID)
+	if val, exists := cache[cacheKey]; exists {
+		return val.(float32)
+	}
+
+	// we load this here because it's very slow to make this request for all players
+	playerHistory, _ := requestPlayerHistory(int(sp.Player.ID))
+
+	// get all matches with similar difficulty majority
+	teamFixtures := sp.Player.Team.Fixtures
+	similarTeamFixtures := make(map[FixtureID]bool, 0)
+	for _, fixture := range teamFixtures {
+		if fixture.DifficultyMajority == sp.Fixture.DifficultyMajority {
+			similarTeamFixtures[fixture.ID] = true
+		}
+	}
+
+	if len(similarTeamFixtures) == 0 {
+		return sp.Player.PointsPerGame
+	}
+
+	totalPoints := 0
+	similarFixturesPlayerPlayedIn := 0
+	for fixtureID, fixture := range playerHistory {
+		if _, ok := similarTeamFixtures[fixtureID]; ok {
+			totalPoints += fixture.Points
+			similarFixturesPlayerPlayedIn++
+		}
+	}
+
+	returnVal := float32(totalPoints) / float32(similarFixturesPlayerPlayedIn)
+
+	cache[cacheKey] = returnVal
+
+	return returnVal
 }
 
 type StartingEleven map[string][]StartingPlayer
@@ -166,6 +216,7 @@ func main() {
 		fmt.Printf("Cost: %s\n", matchingPlayer.Player.Cost)
 		fmt.Printf("Form: %.2f\n", matchingPlayer.Player.Form)
 		fmt.Printf("Score: %.0f\n", matchingPlayer.Score())
+		fmt.Printf("Picked: %.0f%%\n", matchingPlayer.Player.PickedPercentage)
 		fmt.Printf("Overall Rank: %s, by Type: %s\n", matchingPlayer.OverallRank, matchingPlayer.TypeRank)
 		fmt.Printf("Opposition: %s\n", matchingPlayer.OpposingTeam.Name)
 		return
@@ -409,7 +460,7 @@ func tableFormat() (table.Formatter, table.Formatter) {
 func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) {
 	headerFmt, columnFmt := tableFormat()
 
-	tbl := table.New("Type", "Name", "Form", "Score", "Rank (Type)", "Cost", "Opponent")
+	tbl := table.New("Type", "Name", "Form", "PPG", "WPPG", "Score", "Rank (Type)", "Cost", "Opponent")
 	tbl.WithHeaderFormatter(headerFmt).WithFirstColumnFormatter(columnFmt)
 	if gameweek.IsCurrent {
 		fmt.Printf("\nThe best team you could have played going into the current gameweek (deadline %s) was: \n", gameweek.Deadline)
@@ -424,7 +475,7 @@ func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) 
 	tbl.Print()
 
 	fmt.Printf("\nDifferentials:\n")
-	differentialsTbl := table.New("Type", "Name", "Form", "Score", "Picked", "Rank (Type)", "Cost", "Opponent")
+	differentialsTbl := table.New("Type", "Name", "Form", "PPG", "WPPG", "Score", "Picked", "Rank (Type)", "Cost", "Opponent")
 	differentialsTbl.
 		WithHeaderFormatter(headerFmt).
 		WithFirstColumnFormatter(columnFmt)
@@ -440,7 +491,7 @@ func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) 
 	playersToBuyNow := compareBestTeams(bestTeam, differentials)
 	if playersToBuyNow.PlayerCount() > 0 && gameweek.IsNext {
 		fmt.Println("Buy these players now!")
-		playersToBuyTbl := table.New("Type", "Name", "Form", "Score", "Picked", "Rank (Type)", "Cost", "Opponent")
+		playersToBuyTbl := table.New("Type", "Name", "Form", "PPG", "WPPG", "Score", "Picked", "Rank (Type)", "Cost", "Opponent")
 		playersToBuyTbl.
 			WithHeaderFormatter(headerFmt).
 			WithFirstColumnFormatter(columnFmt)
@@ -451,6 +502,10 @@ func printOutput(bestTeam BestTeam, differentials BestTeam, gameweek *Gameweek) 
 		appendToTable(playersToBuyTbl, playersToBuyNow.Forwards, appendOptions)
 		playersToBuyTbl.Print()
 	}
+
+	fmt.Println()
+
+	fmt.Println("(PPG = Points Per Game, WPPG = Weighted Points Per Game (by match difficulty))")
 
 	fmt.Println()
 }
@@ -472,6 +527,8 @@ func appendToTable(tbl table.Table, fixtureWinners []StartingPlayer, options App
 			fixtureWinner.Player.Type.ShortName,
 			playerName,
 			fixtureWinner.Player.Form,
+			fmt.Sprintf("%.2f", fixtureWinner.Player.PointsPerGame),
+			fmt.Sprintf("%.2f", fixtureWinner.WeightedPointsAverage()),
 			fmt.Sprintf("%.0f", fixtureWinner.Score()),
 		}
 
