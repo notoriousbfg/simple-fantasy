@@ -252,9 +252,16 @@ func main() {
 
 	if *managerID != 0 {
 		gameweekPlayers := data.GameweekPlayers(*gameWeekInt)
+		gameweekPlayerSet := data.GameweekPlayerSet(GameweekID(*gameWeekInt))
 
-		config := data.requestManagerPicks(*managerID)
-		myGameweekPlayers := sortStartingPlayersByScore(config.Players)
+		config := data.RequestManagerPicks(*managerID)
+
+		myGameweekPlayers := make([]StartingPlayer, 0)
+		for _, pick := range config.Players {
+			myGameweekPlayers = append(myGameweekPlayers, gameweekPlayerSet[PlayerID(pick.Player.ID)])
+		}
+
+		myGameweekPlayers = sortStartingPlayersByScore(myGameweekPlayers)
 
 		bestTeam := createHighestScoringTeam(myGameweekPlayers)
 		fmt.Printf("\nWith your current players, the best team you could pick for %s is:\n", gameweek.Name)

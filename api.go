@@ -189,7 +189,7 @@ func (d *Data) GameweekPlayerSet(gameweek GameweekID) map[PlayerID]StartingPlaye
 	return playerSet
 }
 
-func (d *Data) requestManagerPicks(managerID int) TeamConfig {
+func (d *Data) RequestManagerPicks(managerID int) TeamConfig {
 	endpoint := fmt.Sprintf("https://fantasy.premierleague.com/api/entry/%d/event/%d/picks/", managerID, d.CurrentGameweek().ID)
 
 	teamBody, err := getJsonBody(endpoint)
