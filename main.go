@@ -331,7 +331,7 @@ func main() {
 		if len(bestPair) > 1 {
 			formattedCash := fmt.Sprintf("£%.1fm", float32(cashAfterSale))
 			fmt.Printf(
-				"Or if you were willing to make two transfers you could sell %s and %s for %s and buy %s and %s, costing %s and %s, with scores %.0f and %.0f.\n\n",
+				"Or if you were willing to make two transfers you could sell %s and %s, using the resulting %s and buying %s and %s, who cost %s and %s with scores %.0f and %.0f.\n\n",
 				worstPlayer.Player.Name,
 				secondWorstPlayer.Player.Name,
 				formattedCash,
