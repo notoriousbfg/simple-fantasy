@@ -1,12 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"unicode"
@@ -134,15 +130,15 @@ func (bt *BestTeam) PlayerCount() int {
 }
 
 type TeamConfig struct {
-	Players   []string `json:"players"`
-	BankValue float32  `json:"bank_value"`
+	Players   []StartingPlayer
+	BankValue float32
 }
 
 func main() {
 	playerName := flag.String("player", "", "for specifying a player's name")
 	playerType := flag.String("type", "", "for viewing a list of top players of a type")
 	gameWeekInt := flag.Int("gameweek", 0, "for specifying the gameweek")
-	teamConfig := flag.String("config", "", "for specifying your current team config")
+	managerID := flag.Int("manager-id", 0, "for specifying your manager id")
 	flag.Parse()
 
 	if *gameWeekInt == 0 {
@@ -254,45 +250,11 @@ func main() {
 	differentials := differentialPlayers(rankedStartingPlayers)
 	bestTeam := createHighestScoringTeam(rankedStartingPlayers)
 
-	if *teamConfig != "" {
-		configFilePath, err := filepath.Abs(*teamConfig)
-		if err != nil {
-			panic(err)
-		}
-		jsonFile, err := os.Open(configFilePath)
-		if err != nil {
-			panic(err)
-		}
-		byteValue, err := io.ReadAll(jsonFile)
-		if err != nil {
-			panic(err)
-		}
-		var config TeamConfig
-		err = json.Unmarshal(byteValue, &config)
-		if err != nil {
-			panic(err)
-		}
-
-		if len(config.Players) < 15 {
-			panic(fmt.Errorf("team config not valid: you only have %d players but need 15", len(config.Players)))
-		}
-
+	if *managerID != 0 {
 		gameweekPlayers := data.GameweekPlayers(*gameWeekInt)
 
-		myGameweekPlayers := make([]StartingPlayer, 0)
-		for _, myPlayer := range config.Players {
-			for _, gameweekPlayer := range gameweekPlayers {
-				if myPlayer == gameweekPlayer.Player.Name {
-					myGameweekPlayers = append(myGameweekPlayers, gameweekPlayer)
-				}
-			}
-		}
-
-		myGameweekPlayers = sortStartingPlayersByScore(myGameweekPlayers)
-		// checking again for consistency
-		if len(myGameweekPlayers) < 15 {
-			panic(fmt.Errorf("team config not valid: you only have %d players but need 15", len(myGameweekPlayers)))
-		}
+		config := data.requestManagerPicks(*managerID)
+		myGameweekPlayers := sortStartingPlayersByScore(config.Players)
 
 		bestTeam := createHighestScoringTeam(myGameweekPlayers)
 		fmt.Printf("\nWith your current players, the best team you could pick for %s is:\n", gameweek.Name)

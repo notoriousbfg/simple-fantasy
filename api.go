@@ -101,6 +101,20 @@ type apiFixture struct {
 
 type apiFixtures []apiFixture
 
+type apiPicks struct {
+	Picks        []apiPick       `json:"picks"`
+	EntryHistory apiEntryHistory `json:"entry_history"`
+}
+
+type apiPick struct {
+	Element   int  `json:"element"`
+	IsCaptain bool `json:"is_captain"`
+}
+
+type apiEntryHistory struct {
+	Bank float32 `json:"bank"`
+}
+
 type Data struct {
 	PlayerTypes []PlayerType
 	Gameweeks   []Gameweek
@@ -165,6 +179,43 @@ func (d *Data) GameweekPlayers(gameweek int) []StartingPlayer {
 		}
 	}
 	return gameweekPlayers
+}
+
+func (d *Data) GameweekPlayerSet(gameweek GameweekID) map[PlayerID]StartingPlayer {
+	playerSet := make(map[PlayerID]StartingPlayer, 0)
+	for _, player := range d.GameweekPlayers(int(gameweek)) {
+		playerSet[player.Player.ID] = player
+	}
+	return playerSet
+}
+
+func (d *Data) requestManagerPicks(managerID int) TeamConfig {
+	endpoint := fmt.Sprintf("https://fantasy.premierleague.com/api/entry/%d/event/%d/picks/", managerID, d.CurrentGameweek().ID)
+
+	teamBody, err := getJsonBody(endpoint)
+	if err != nil {
+		panic(err)
+	}
+
+	var apiPicks apiPicks
+	if err := json.Unmarshal(teamBody, &apiPicks); err != nil {
+		panic(err)
+	}
+
+	gameweekPlayerSet := d.GameweekPlayerSet(d.CurrentGameweek().ID)
+
+	players := make([]StartingPlayer, 0)
+	for _, pick := range apiPicks.Picks {
+		thisPlayer, ok := gameweekPlayerSet[PlayerID(pick.Element)]
+		if ok {
+			players = append(players, thisPlayer)
+		}
+	}
+
+	return TeamConfig{
+		Players:   players,
+		BankValue: apiPicks.EntryHistory.Bank,
+	}
 }
 
 type PlayerTypeID int
