@@ -258,6 +258,10 @@ func main() {
 
 		myGameweekPlayers := make([]StartingPlayer, 0)
 		for _, pick := range config.Players {
+			// for players missing from gameweek i.e. no fixture
+			if _, ok := gameweekPlayerSet[PlayerID(pick.Player.ID)]; !ok {
+				continue
+			}
 			myGameweekPlayers = append(myGameweekPlayers, gameweekPlayerSet[PlayerID(pick.Player.ID)])
 		}
 
@@ -275,7 +279,7 @@ func main() {
 		appendToTable(tbl, bestTeam.Forwards, appendOptions)
 		tbl.Print()
 
-		worstPlayer := myGameweekPlayers[14]
+		worstPlayer := myGameweekPlayers[len(myGameweekPlayers)-1]
 		cashAfterSale := worstPlayer.Player.RawCost + config.BankValue
 
 		playersICanAfford := make([]StartingPlayer, 0)
@@ -299,7 +303,7 @@ func main() {
 		fmt.Printf("Type './simple-fantasy -gameweek %d -player %s' to find out more about him.\n\n", *gameWeekInt, topPick.Player.Name)
 
 		// what could 2 transfers get you?
-		secondWorstPlayer := myGameweekPlayers[13]
+		secondWorstPlayer := myGameweekPlayers[len(myGameweekPlayers)-2]
 		cashAfterSale = worstPlayer.Player.RawCost + secondWorstPlayer.Player.RawCost + config.BankValue
 		scoresAndPlayers := make(map[float32][]StartingPlayer, 0)
 		sortedGameweekPlayers := sortStartingPlayersByScore(gameweekPlayers)
