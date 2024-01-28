@@ -150,6 +150,11 @@ func main() {
 		panic(err)
 	}
 
+	err = StoreData(data)
+	if err != nil {
+		panic(err)
+	}
+
 	var gameweek *Gameweek
 	if *gameWeekInt > 0 {
 		gameweek = data.Gameweek(*gameWeekInt)
