@@ -11,6 +11,20 @@ func StoreData(data *Data) error {
 	store := PlayerStore{}
 	store.Setup()
 
+	for _, playerType := range data.PlayerTypes {
+		err := store.StorePlayerType(playerType)
+		if err != nil {
+			return err
+		}
+	}
+
+	// for _, team := range data.Teams {
+	// 	err := store.StoreTeam(team)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// }
+
 	for _, player := range data.Players {
 		err := store.StorePlayer(player, data.CurrentGameweek().ID)
 		if err != nil {
@@ -42,8 +56,23 @@ func (p *PlayerStore) Setup() error {
 	db, _ := p.Connect()
 	defer p.Close()
 
-	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS players (
+	_, err := db.Exec(`CREATE TABLE IF NOT EXISTS player_types (
 		id INTEGER PRIMARY KEY,
+		name TEXT,
+		plural_name TEXT,
+		short_name TEXT,
+		team_player_count INTEGER,
+		team_min_play_count INTEGER,
+		team_max_play_count INTEGER
+	)`)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS players (
+		gameweek_player_id VARCHAR PRIMARY KEY
+		id INTEGER,
 		gameweek_id INTEGER,
 		name TEXT,
 		form REAL,
@@ -82,13 +111,29 @@ func (p *PlayerStore) StorePlayer(player Player, gameweekID GameweekID) error {
 	defer p.Close()
 
 	query := `
-		INSERT INTO players (id, gameweek_id, name, form, points_per_game, total_points, cost, raw_cost, team_id, type_id, minutes, goals, assists, conceded, clean_sheets, yellow_cards, red_cards, bonus, starts, average_starts, matches_played, ict_index, ict_index_rank, most_captained, picked_percentage)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO players (gameweek_player_id, id, gameweek_id, name, form, points_per_game, total_points, cost, raw_cost, team_id, type_id, minutes, goals, assists, conceded, clean_sheets, yellow_cards, red_cards, bonus, starts, average_starts, matches_played, ict_index, ict_index_rank, most_captained, picked_percentage)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
 
-	result, err := db.Exec(query, player.ID, gameweekID, player.Name, player.Form, player.PointsPerGame, player.TotalPoints, player.Cost, player.RawCost, player.Team.ID, player.Type.ID, player.Stats.Minutes, player.Stats.Goals, player.Stats.Assists, player.Stats.Conceded, player.Stats.CleanSheets, player.Stats.YellowCards, player.Stats.RedCards, player.Stats.Bonus, player.Stats.Starts, player.Stats.AverageStarts, player.Stats.MatchesPlayed, player.Stats.ICTIndex, player.Stats.ICTIndexRank, player.MostCaptained, player.PickedPercentage)
+	_, err := db.Exec(query, fmt.Sprintf("%d_%d", player.ID, gameweekID), player.ID, gameweekID, player.Name, player.Form, player.PointsPerGame, player.TotalPoints, player.Cost, player.RawCost, player.Team.ID, player.Type.ID, player.Stats.Minutes, player.Stats.Goals, player.Stats.Assists, player.Stats.Conceded, player.Stats.CleanSheets, player.Stats.YellowCards, player.Stats.RedCards, player.Stats.Bonus, player.Stats.Starts, player.Stats.AverageStarts, player.Stats.MatchesPlayed, player.Stats.ICTIndex, player.Stats.ICTIndexRank, player.MostCaptained, player.PickedPercentage)
 
-	fmt.Print(result, err)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (p *PlayerStore) StorePlayerType(playerType PlayerType) error {
+	db, _ := p.Connect()
+	defer p.Close()
+
+	query := `
+		INSERT INTO player_types (id, name, plural_name, short_name, team_player_count, team_min_play_count, team_max_play_count)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`
+
+	_, err := db.Exec(query, playerType.ID, playerType.Name, playerType.PluralName, playerType.ShortName, playerType.TeamPlayerCount, playerType.TeamMinPlayCount, playerType.TeamMaxPlayCount)
 
 	if err != nil {
 		return err
