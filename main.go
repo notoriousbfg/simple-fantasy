@@ -139,6 +139,7 @@ func main() {
 	playerType := flag.String("type", "", "for viewing a list of top players of a type")
 	gameWeekInt := flag.Int("gameweek", 0, "for specifying the gameweek")
 	managerID := flag.Int("manager-id", 0, "for specifying your manager id")
+	save := flag.Bool("save", false, "for storing data")
 	flag.Parse()
 
 	if *gameWeekInt == 0 {
@@ -146,11 +147,6 @@ func main() {
 	}
 
 	data, err := BuildData()
-	if err != nil {
-		panic(err)
-	}
-
-	err = StoreData(data)
 	if err != nil {
 		panic(err)
 	}
@@ -164,6 +160,15 @@ func main() {
 		}
 	} else {
 		gameweek = data.CurrentGameweek()
+	}
+
+	if *save {
+		defer func() {
+			err = StoreData(data, *gameWeekInt)
+			if err != nil {
+				panic(err)
+			}
+		}()
 	}
 
 	previousGameweek := data.Gameweek(int(gameweek.ID) - 1)
